@@ -61,6 +61,8 @@ const WeeklyMessageGenerator = () => {
 
   const [showCopyNotification, setShowCopyNotification] = useState(false);
 
+  const [showConfirmation, setShowConfirmation] = useState(false);
+
   const [reportDate, setReportDate] = useLocalStorage('reportDate', (() => {
     if (typeof window === 'undefined') {
       return '';
@@ -519,6 +521,39 @@ const WeeklyMessageGenerator = () => {
     }
   }, [generateMessage]);
 
+  const renderConfirmationModal = () => (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-gray-800 rounded-lg p-6 max-w-sm w-full shadow-lg">
+        <h3 className="text-lg font-semibold text-gray-100 mb-4">
+          هل أنت متأكد؟
+        </h3>
+        <p className="text-sm text-gray-400 mb-6">
+          سيتم مسح جميع البيانات الحالية وبدء حصة جديدة. لا يمكن التراجع عن هذا الإجراء.
+        </p>
+        <p className="text-sm text-gray-400 mb-6">
+          إسم الفصل وأسماء الطلاب لن يتم حذفهم.
+        </p>
+        <div className="flex justify-end gap-4">
+          <button
+            onClick={() => setShowConfirmation(false)}
+            className="px-4 py-2 rounded-md bg-gray-600 text-gray-100 hover:bg-gray-700 transition-colors"
+          >
+            إلغاء
+          </button>
+          <button
+            onClick={() => {
+              clearData();
+              setShowConfirmation(false);
+            }}
+            className="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700 transition-colors"
+          >
+            تأكيد
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   const renderContent = () => {
     if (!isMounted) {
       return (
@@ -854,17 +889,20 @@ const WeeklyMessageGenerator = () => {
             </button>
           </div>
 
-          {/* Clear Data Button */}
+          {/* New Session Button */}
           <button
-            onClick={clearData}
+            onClick={() => setShowConfirmation(true)}
             className="flex-1 inline-flex items-center justify-center rounded-md text-sm font-medium 
-      bg-red-600 hover:bg-red-700 h-12 px-6 py-2 transition-colors duration-200 group"
+        bg-yellow-600 hover:bg-yellow-700 h-12 px-6 py-2 transition-colors duration-200 group"
           >
             <div className="flex items-center gap-2">
-              <Trash2 className="h-5 w-5 transition-transform group-hover:scale-110" />
-              <span className="font-medium">مسح البيانات</span>
+              <PenLine className="h-5 w-5 transition-transform group-hover:scale-110" />
+              <span className="font-medium">حصة جديدة</span>
             </div>
           </button>
+
+          {/* Render Confirmation Modal */}
+          {showConfirmation && renderConfirmationModal()}
         </div>
       </div>
     );
