@@ -383,50 +383,58 @@ const WeeklyMessageGenerator = () => {
   }, [attendance, students]);
 
   const getHomeworkMessage = useCallback(() => {
+    // If homework section is disabled entirely, return empty string
     if (!homework.general.enabled) return '';
-
+  
     let message = '';
-
+  
+    // Add general homework section if there's content
     if (homework.general.content) {
       message += '*الواجب العام:*\n';
       message += `${homework.general.content}\n\n`;
     }
-
-    if (homework.specific.enabled && homework.specific.assignments.length > 0) {
-      const validAssignments = homework.specific.assignments.filter(
-        assignment => assignment.studentIds.length > 0 && assignment.content
-      );
-
-      if (validAssignments.length > 0) {
-        message += '*واجبات خاصة:*\n';
-        validAssignments.forEach(assignment => {
-          const studentNames = assignment.studentIds
-            .map(id => students.find(s => s.id === id)?.name)
-            .filter(Boolean)
-            .join('، ');
-          message += `🔸 *${studentNames}:*\n`;
-          message += `${assignment.content}\n\n`;
-        });
-      }
+  
+    // Add specific homework assignments
+    const validAssignments = homework.specific.assignments.filter(
+      assignment => assignment.studentIds.length > 0 && assignment.content.trim()
+    );
+  
+    if (validAssignments.length > 0) {
+      message += '*واجبات خاصة:*\n';
+      validAssignments.forEach(assignment => {
+        const studentNames = assignment.studentIds
+          .map(id => students.find(s => s.id === id)?.name)
+          .filter(Boolean)
+          .join('، ');
+        message += `🔸 *${studentNames}:*\n`;
+        message += `${assignment.content}\n\n`;
+      });
     }
-
-    return message ? `📝 *الواجبات:*\n${message}` : '';
+  
+    return message ? `📝 *الواجبات المنزلية:*\n${message}` : '';
   }, [homework, students]);
 
   // Main message generation function
   const generateMessage = useCallback(() => {
+    // Opening and Welcome
     let message = 'بسم الله الرحمن الرحيم\n';
     message += 'السلام عليكم ورحمة الله وبركاته\n\n';
-
-    message += `👥 *أولياء أمورنا الكرام في فصل ${className}*\n`;
+    
+    // Warm welcome addition
+    message += 'حياكم الله أولياء أمورنا الكرام 🌟\n';
+    message += 'نسعد بمشاركتكم تقرير هذا اليوم عن أبنائكم\n\n';
+    
+    // Class and Date Information
+    message += `👥 *فصل ${className}*\n`;
     message += `📅 *تقرير يوم ${formattedDate}*\n\n`;
-
-    // Add attendance section if there are students
+  
+    // Attendance Section with improved header
     if (students.length > 0) {
+      message += '📊 *سجل الحضور والغياب*\n';
       message += getAttendanceMessage() + '\n';
     }
-
-    // Add enabled sections with content
+  
+    // Dynamic Sections with improved headers
     Object.entries(sections).forEach(([sectionKey, section]) => {
       if (section.enabled && section.fields.some(f => f.key && f.value)) {
         const sectionIcons = {
@@ -435,14 +443,14 @@ const WeeklyMessageGenerator = () => {
           reminders: '⚠️',
           custom: '📌'
         };
-
+  
         const titles = {
-          weekStudy: 'ما تم دراسته هذا الأسبوع',
-          notes: 'ملاحظات المعلم',
-          reminders: 'تذكيرات مهمة',
+          weekStudy: 'المحتوى التعليمي لهذا الأسبوع',
+          notes: 'ملاحظات وتوجيهات المعلم',
+          reminders: 'تذكيرات هامة',
           custom: 'معلومات إضافية'
         };
-
+  
         message += `${sectionIcons[sectionKey]} *${titles[sectionKey]}*\n`;
         section.fields.forEach(field => {
           if (field.key && field.value) {
@@ -457,16 +465,20 @@ const WeeklyMessageGenerator = () => {
         });
       }
     });
-
-    // Add homework section if enabled
+  
+    // Homework Section
     const homeworkMessage = getHomeworkMessage();
     if (homeworkMessage) {
       message += homeworkMessage + '\n';
     }
-
-    message += '🤲 جزاكم الله خيراً\n';
-    message += 'وتفضلوا بقبول فائق الاحترام والتقدير';
-
+  
+    // Enhanced closing message
+    message += '🤲 نشكر لكم متابعتكم المستمرة ودعمكم لأبنائكم\n';
+    message += 'جزاكم الله خيراً على تعاونكم معنا\n\n';
+    
+    // Parent engagement note
+    message += '📱 نرحب دائماً باستفساراتكم وملاحظاتكم';
+  
     return message;
   }, [
     className,
