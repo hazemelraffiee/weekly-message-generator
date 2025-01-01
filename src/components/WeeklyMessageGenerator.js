@@ -17,83 +17,87 @@ import {
 
 
 const useParamsOrStorage = (storageKey, paramKey, initialValue = null) => {
-  const [state, setState] = useState(() => {
-    if (typeof window === 'undefined') return initialValue;
+  const [state, setState] = useState(initialValue);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
     
-    // Get URL parameters
-    const params = new URLSearchParams(window.location.search);
-    const paramValue = params.get(paramKey);
-    
-    if (paramValue) {
-      // Handle students parameter differently
-      if (paramKey === 'students') {
-        const studentNames = paramValue.split(',').filter(name => name.trim());
-        return studentNames.map(name => ({
-          id: generateStudentId(name.trim()),
-          name: decodeURIComponent(name.trim())
-        }));
-      }
-      return paramValue;
-    }
-    
-    // Fall back to localStorage
     try {
-      const stored = localStorage.getItem(`weeklyMessage_${storageKey}`);
-      return stored ? JSON.parse(stored) : initialValue;
+      // Get URL parameters
+      const params = new URLSearchParams(window.location.search);
+      const paramValue = params.get(paramKey);
+      
+      if (paramValue) {
+        if (paramKey === 'students') {
+          const studentNames = paramValue.split(',').filter(name => name.trim());
+          setState(studentNames.map(name => ({
+            id: generateStudentId(name.trim()),
+            name: decodeURIComponent(name.trim())
+          })));
+        } else {
+          setState(paramValue);
+        }
+      } else {
+        // Fall back to localStorage
+        const stored = localStorage.getItem(`weeklyMessage_${storageKey}`);
+        if (stored) {
+          setState(JSON.parse(stored));
+        }
+      }
+      setIsInitialized(true);
     } catch (error) {
-      console.error(`Error loading ${storageKey}:`, error);
-      return initialValue;
+      console.error(`Error in useParamsOrStorage for ${storageKey}:`, error);
+      setState(initialValue);
+      setIsInitialized(true);
     }
-  });
+  }, [storageKey, paramKey, initialValue]);
 
   // Update localStorage when state changes
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem(`weeklyMessage_${storageKey}`, JSON.stringify(state));
-      } catch (error) {
-        console.error(`Error saving ${storageKey} to localStorage:`, error);
-      }
+    if (!isInitialized || typeof window === 'undefined') return;
+    
+    try {
+      localStorage.setItem(`weeklyMessage_${storageKey}`, JSON.stringify(state));
+    } catch (error) {
+      console.error(`Error saving ${storageKey} to localStorage:`, error);
     }
-  }, [storageKey, state]);
+  }, [storageKey, state, isInitialized]);
 
   return [state, setState];
 };
 
 const useLocalStorage = (key, initialValue) => {
-  // Initialize state with a function to avoid executing during SSR
-  const [state, setState] = useState(() => {
-    // Only try to get from localStorage after component mounts
-    if (typeof window === 'undefined') {
-      return initialValue;
-    }
+  const [state, setState] = useState(initialValue);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
 
     try {
       const item = localStorage.getItem(`weeklyMessage_${key}`);
-      // Check if the item exists before trying to parse it
-      return item ? JSON.parse(item) : initialValue;
+      setState(item ? JSON.parse(item) : initialValue);
+      setIsInitialized(true);
     } catch (error) {
       console.error(`Error loading ${key} from localStorage:`, error);
-      return initialValue;
+      setState(initialValue);
+      setIsInitialized(true);
     }
-  });
+  }, [key, initialValue]);
 
-  // Update localStorage when state changes
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        // Make sure to stringify undefined values as null
-        const valueToStore = state === undefined ? null : state;
-        localStorage.setItem(`weeklyMessage_${key}`, JSON.stringify(valueToStore));
-      } catch (error) {
-        console.error(`Error saving ${key} to localStorage:`, error);
-      }
+    if (!isInitialized || typeof window === 'undefined') return;
+
+    try {
+      const valueToStore = state === undefined ? null : state;
+      localStorage.setItem(`weeklyMessage_${key}`, JSON.stringify(valueToStore));
+    } catch (error) {
+      console.error(`Error saving ${key} to localStorage:`, error);
     }
-  }, [key, state]);
+  }, [key, state, isInitialized]);
 
   return [state, setState];
 };
-
 
 const generateStudentId = (name) => {
   // Remove any whitespace and convert to lowercase
@@ -142,7 +146,7 @@ const WeeklyMessageGenerator = () => {
 
   // Core state management
   const [className, setClassName] = useParamsOrStorage('className', 'class');
-  const [students, setStudents] = useParamsOrStorage('students', 'students');
+  const [students, setStudents] = useParamsOrStorage('students', 'students', []);
   const [sections, setSections] = useLocalStorage('sections', {
     weekStudy: {
       enabled: true,
