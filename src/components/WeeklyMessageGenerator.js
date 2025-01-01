@@ -21,7 +21,7 @@ const useParamsOrStorage = (storageKey, paramKey, initialValue = null) => {
   const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || isInitialized) return;
     
     try {
       // Get URL parameters
@@ -51,7 +51,7 @@ const useParamsOrStorage = (storageKey, paramKey, initialValue = null) => {
       setState(initialValue);
       setIsInitialized(true);
     }
-  }, [storageKey, paramKey, initialValue]);
+  }, [storageKey, paramKey, initialValue, isInitialized]);
 
   // Update localStorage when state changes
   useEffect(() => {
@@ -283,18 +283,20 @@ const WeeklyMessageGenerator = () => {
     if (newStudentName.trim()) {
       setStudents(prev => {
         const id = generateStudentId(newStudentName.trim());
-        // Check if student already exists
-        if (prev.some(student => student.id === id)) {
-          return prev; // Don't add duplicate students
+        // Return same array if student already exists
+        if (prev?.some(student => student.id === id)) {
+          return prev;
         }
-        return [...prev, {
-          id: id,
+        // Create new array with additional student
+        const newStudents = Array.isArray(prev) ? prev : [];
+        return [...newStudents, {
+          id,
           name: newStudentName.trim()
         }];
       });
       setNewStudentName('');
     }
-  }, [newStudentName, setStudents]);
+  }, [newStudentName, setStudents]);  
 
   const removeStudent = useCallback((studentId) => {
     setStudents(prev => prev.filter(student => student.id !== studentId));
