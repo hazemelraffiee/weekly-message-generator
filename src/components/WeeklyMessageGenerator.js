@@ -15,86 +15,86 @@ import {
   Link2
 } from 'lucide-react';
 
+import { useHydration } from '@/context/HydrationContext'
 
-const useParamsOrStorage = (storageKey, paramKey, initialValue = null) => {
-  const [state, setState] = useState(initialValue);
-  const [isInitialized, setIsInitialized] = useState(false);
+const useHydrated = () => {
+  const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
-    if (typeof window === 'undefined' || isInitialized) return;
-    
+    setIsHydrated(true);
+  }, []);
+
+  return isHydrated;
+};
+
+
+const useParamsOrStorage = (storageKey, paramKey, initialValue = null) => {
+  const isHydrated = useHydration();
+  const [state, setState] = useState(() => {
+    // During SSR or before hydration, return initial value
+    if (!isHydrated) return initialValue;
+
     try {
-      // Get URL parameters
       const params = new URLSearchParams(window.location.search);
       const paramValue = params.get(paramKey);
       
       if (paramValue) {
         if (paramKey === 'students') {
           const studentNames = paramValue.split(',').filter(name => name.trim());
-          setState(studentNames.map(name => ({
+          return studentNames.map(name => ({
             id: generateStudentId(name.trim()),
             name: decodeURIComponent(name.trim())
-          })));
-        } else {
-          setState(paramValue);
+          }));
         }
-      } else {
-        // Fall back to localStorage
-        const stored = localStorage.getItem(`weeklyMessage_${storageKey}`);
-        if (stored) {
-          setState(JSON.parse(stored));
-        }
+        return paramValue;
       }
-      setIsInitialized(true);
+      
+      const stored = localStorage.getItem(`weeklyMessage_${storageKey}`);
+      return stored ? JSON.parse(stored) : initialValue;
     } catch (error) {
       console.error(`Error in useParamsOrStorage for ${storageKey}:`, error);
-      setState(initialValue);
-      setIsInitialized(true);
+      return initialValue;
     }
-  }, [storageKey, paramKey, initialValue, isInitialized]);
+  });
 
-  // Update localStorage when state changes
+  // Save to localStorage when state changes
   useEffect(() => {
-    if (!isInitialized || typeof window === 'undefined') return;
+    if (!isHydrated) return;
     
     try {
       localStorage.setItem(`weeklyMessage_${storageKey}`, JSON.stringify(state));
     } catch (error) {
       console.error(`Error saving ${storageKey} to localStorage:`, error);
     }
-  }, [storageKey, state, isInitialized]);
+  }, [storageKey, state, isHydrated]);
 
   return [state, setState];
 };
 
 const useLocalStorage = (key, initialValue) => {
-  const [state, setState] = useState(initialValue);
-  const [isInitialized, setIsInitialized] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
+  const isHydrated = useHydration();
+  const [state, setState] = useState(() => {
+    // During SSR or before hydration, return initial value
+    if (!isHydrated) return initialValue;
 
     try {
       const item = localStorage.getItem(`weeklyMessage_${key}`);
-      setState(item ? JSON.parse(item) : initialValue);
-      setIsInitialized(true);
+      return item ? JSON.parse(item) : initialValue;
     } catch (error) {
       console.error(`Error loading ${key} from localStorage:`, error);
-      setState(initialValue);
-      setIsInitialized(true);
+      return initialValue;
     }
-  }, [key, initialValue]);
+  });
 
   useEffect(() => {
-    if (!isInitialized || typeof window === 'undefined') return;
+    if (!isHydrated) return;
 
     try {
-      const valueToStore = state === undefined ? null : state;
-      localStorage.setItem(`weeklyMessage_${key}`, JSON.stringify(valueToStore));
+      localStorage.setItem(`weeklyMessage_${key}`, JSON.stringify(state));
     } catch (error) {
       console.error(`Error saving ${key} to localStorage:`, error);
     }
-  }, [key, state, isInitialized]);
+  }, [key, state, isHydrated]);
 
   return [state, setState];
 };
@@ -117,6 +117,19 @@ const generateStudentId = (name) => {
 };
 
 const WeeklyMessageGenerator = () => {
+
+  const isHydrated = useHydration();
+
+  if (!isHydrated) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="flex items-center gap-3 text-lg">
+          <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+          <span>جاري التحميل...</span>
+        </div>
+      </div>
+    );
+  }
 
   const [isMounted, setIsMounted] = useState(false);
 

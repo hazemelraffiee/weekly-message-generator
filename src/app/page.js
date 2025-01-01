@@ -1,6 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import { HydrationProvider } from '@/context/HydrationContext';
 
 const WeeklyMessageGenerator = dynamic(
   () => import('@/components/WeeklyMessageGenerator'),
@@ -10,7 +11,9 @@ const WeeklyMessageGenerator = dynamic(
 export default function Home() {
   return (
     <main className="min-h-screen bg-gray-900 py-8">
-      <WeeklyMessageGenerator />
+      <HydrationProvider>
+        <WeeklyMessageGenerator />
+      </HydrationProvider>
     </main>
   );
 }
