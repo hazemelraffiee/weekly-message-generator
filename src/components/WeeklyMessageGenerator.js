@@ -29,7 +29,7 @@ const useParamsOrStorage = (storageKey, paramKey, initialValue = null) => {
       if (paramKey === 'students') {
         const studentNames = paramValue.split(',').filter(name => name.trim());
         return studentNames.map(name => ({
-          id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+          id: generateStudentId(name.trim()),
           name: decodeURIComponent(name.trim())
         }));
       }
@@ -94,6 +94,23 @@ const useLocalStorage = (key, initialValue) => {
   return [state, setState];
 };
 
+
+const generateStudentId = (name) => {
+  // Remove any whitespace and convert to lowercase
+  const normalizedName = name.trim().toLowerCase();
+  
+  // Create a simple hash from the name
+  // This ensures the same name always generates the same ID
+  let hash = 0;
+  for (let i = 0; i < normalizedName.length; i++) {
+    const char = normalizedName.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  
+  // Convert to a string and make it positive
+  return `student_${Math.abs(hash)}`;
+};
 
 const WeeklyMessageGenerator = () => {
 
@@ -260,10 +277,17 @@ const WeeklyMessageGenerator = () => {
   // Student management functions
   const addStudent = useCallback(() => {
     if (newStudentName.trim()) {
-      setStudents(prev => [...prev, {
-        id: Date.now().toString(),
-        name: newStudentName.trim()
-      }]);
+      setStudents(prev => {
+        const id = generateStudentId(newStudentName.trim());
+        // Check if student already exists
+        if (prev.some(student => student.id === id)) {
+          return prev; // Don't add duplicate students
+        }
+        return [...prev, {
+          id: id,
+          name: newStudentName.trim()
+        }];
+      });
       setNewStudentName('');
     }
   }, [newStudentName, setStudents]);
