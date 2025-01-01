@@ -4,21 +4,61 @@ import React, { useState, useCallback, useEffect } from 'react';
 import {
   Copy,
   Plus,
-  Minus,
   Check,
   Users,
   Calendar,
-  BookOpen,
-  ClipboardList,
-  Bell,
-  Settings,
   Trash2,
   PenLine,
   Loader2,
   GraduationCap,
-  Clock
+  Clock,
+  Link2
 } from 'lucide-react';
 
+
+const useParamsOrStorage = (storageKey, paramKey, initialValue = null) => {
+  const [state, setState] = useState(() => {
+    if (typeof window === 'undefined') return initialValue;
+    
+    // Get URL parameters
+    const params = new URLSearchParams(window.location.search);
+    const paramValue = params.get(paramKey);
+    
+    if (paramValue) {
+      // Handle students parameter differently
+      if (paramKey === 'students') {
+        const studentNames = paramValue.split(',').filter(name => name.trim());
+        return studentNames.map(name => ({
+          id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+          name: decodeURIComponent(name.trim())
+        }));
+      }
+      return paramValue;
+    }
+    
+    // Fall back to localStorage
+    try {
+      const stored = localStorage.getItem(`weeklyMessage_${storageKey}`);
+      return stored ? JSON.parse(stored) : initialValue;
+    } catch (error) {
+      console.error(`Error loading ${storageKey}:`, error);
+      return initialValue;
+    }
+  });
+
+  // Update localStorage when state changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(`weeklyMessage_${storageKey}`, JSON.stringify(state));
+      } catch (error) {
+        console.error(`Error saving ${storageKey} to localStorage:`, error);
+      }
+    }
+  }, [storageKey, state]);
+
+  return [state, setState];
+};
 
 const useLocalStorage = (key, initialValue) => {
   // Initialize state with a function to avoid executing during SSR
@@ -63,6 +103,10 @@ const WeeklyMessageGenerator = () => {
 
   const [showConfirmation, setShowConfirmation] = useState(false);
 
+  const [showDataConflict, setShowDataConflict] = useState(false);
+  const [urlData, setUrlData] = useState(null);
+  const [savedData, setSavedData] = useState(null);
+
   const [reportDate, setReportDate] = useLocalStorage('reportDate', (() => {
     if (typeof window === 'undefined') {
       return '';
@@ -80,8 +124,8 @@ const WeeklyMessageGenerator = () => {
   const todayStr = today.toISOString().split('T')[0];
 
   // Core state management
-  const [className, setClassName] = useLocalStorage('className', '');
-  const [students, setStudents] = useLocalStorage('students', []);
+  const [className, setClassName] = useParamsOrStorage('className', 'class');
+  const [students, setStudents] = useParamsOrStorage('students', 'students');
   const [sections, setSections] = useLocalStorage('sections', {
     weekStudy: {
       enabled: true,
@@ -104,7 +148,8 @@ const WeeklyMessageGenerator = () => {
   const [formattedDate, setFormattedDate] = useLocalStorage('formattedDate', '');
   const [attendance, setAttendance] = useLocalStorage('attendance', {});
   const [newStudentName, setNewStudentName] = useState('');
-  const [copyStatus, setCopyStatus] = useState('initial');
+  const [messageCopyStatus, setMessageCopyStatus] = useState('initial');
+  const [urlCopyStatus, setUrlCopyStatus] = useState('initial');
   const [homework, setHomework] = useLocalStorage('homework', {
     general: {
       enabled: true,
@@ -385,20 +430,20 @@ const WeeklyMessageGenerator = () => {
   const getHomeworkMessage = useCallback(() => {
     // If homework section is disabled entirely, return empty string
     if (!homework.general.enabled) return '';
-  
+
     let message = '';
-  
+
     // Add general homework section if there's content
     if (homework.general.content) {
       message += '*الواجب العام:*\n';
       message += `${homework.general.content}\n\n`;
     }
-  
+
     // Add specific homework assignments
     const validAssignments = homework.specific.assignments.filter(
       assignment => assignment.studentIds.length > 0 && assignment.content.trim()
     );
-  
+
     if (validAssignments.length > 0) {
       message += '*واجبات خاصة:*\n';
       validAssignments.forEach(assignment => {
@@ -410,7 +455,7 @@ const WeeklyMessageGenerator = () => {
         message += `${assignment.content}\n\n`;
       });
     }
-  
+
     return message ? `📝 *الواجبات المنزلية:*\n${message}` : '';
   }, [homework, students]);
 
@@ -419,21 +464,21 @@ const WeeklyMessageGenerator = () => {
     // Opening and Welcome
     let message = 'بسم الله الرحمن الرحيم\n';
     message += 'السلام عليكم ورحمة الله وبركاته\n\n';
-    
+
     // Warm welcome addition
     message += 'حياكم الله أولياء أمورنا الكرام 🌟\n';
     message += 'نسعد بمشاركتكم تقرير هذا اليوم عن أبنائكم\n\n';
-    
+
     // Class and Date Information
     message += `👥 *فصل ${className}*\n`;
     message += `📅 *تقرير يوم ${formattedDate}*\n\n`;
-  
+
     // Attendance Section with improved header
     if (students.length > 0) {
       message += '📊 *سجل الحضور والغياب*\n';
       message += getAttendanceMessage() + '\n';
     }
-  
+
     // Dynamic Sections with improved headers
     Object.entries(sections).forEach(([sectionKey, section]) => {
       if (section.enabled && section.fields.some(f => f.key && f.value)) {
@@ -443,14 +488,14 @@ const WeeklyMessageGenerator = () => {
           reminders: '⚠️',
           custom: '📌'
         };
-  
+
         const titles = {
           weekStudy: 'المحتوى التعليمي لهذا الأسبوع',
           notes: 'ملاحظات وتوجيهات المعلم',
           reminders: 'تذكيرات هامة',
           custom: 'معلومات إضافية'
         };
-  
+
         message += `${sectionIcons[sectionKey]} *${titles[sectionKey]}*\n`;
         section.fields.forEach(field => {
           if (field.key && field.value) {
@@ -465,20 +510,20 @@ const WeeklyMessageGenerator = () => {
         });
       }
     });
-  
+
     // Homework Section
     const homeworkMessage = getHomeworkMessage();
     if (homeworkMessage) {
       message += homeworkMessage + '\n';
     }
-  
+
     // Enhanced closing message
     message += '🤲 نشكر لكم متابعتكم المستمرة ودعمكم لأبنائكم\n';
     message += 'جزاكم الله خيراً على تعاونكم معنا\n\n';
-    
+
     // Parent engagement note
     message += '📱 نرحب دائماً باستفساراتكم وملاحظاتكم';
-  
+
     return message;
   }, [
     className,
@@ -500,13 +545,13 @@ const WeeklyMessageGenerator = () => {
     document.body.appendChild(textarea);
 
     try {
-      setCopyStatus('copying');
+      setMessageCopyStatus('copying');
       textarea.select();
       document.execCommand('copy');
-      setCopyStatus('copied');
+      setMessageCopyStatus('copied');
       setShowCopyNotification(true);
       setTimeout(() => {
-        setCopyStatus('initial');
+        setMessageCopyStatus('initial');
         setShowCopyNotification(false);
       }, 2000);
     } catch (err) {
@@ -514,19 +559,19 @@ const WeeklyMessageGenerator = () => {
       if (navigator.clipboard) {
         navigator.clipboard.writeText(message)
           .then(() => {
-            setCopyStatus('copied');
+            setMessageCopyStatus('copied');
             setShowCopyNotification(true);
             setTimeout(() => {
-              setCopyStatus('initial');
+              setMessageCopyStatus('initial');
               setShowCopyNotification(false);
             }, 2000);
           })
           .catch((clipErr) => {
             console.error('Clipboard API failed:', clipErr);
-            setCopyStatus('initial');
+            setMessageCopyStatus('initial');
           });
       } else {
-        setCopyStatus('initial');
+        setMessageCopyStatus('initial');
       }
     } finally {
       document.body.removeChild(textarea);
@@ -565,6 +610,85 @@ const WeeklyMessageGenerator = () => {
       </div>
     </div>
   );
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+  
+    const params = new URLSearchParams(window.location.search);
+    const urlClassName = params.get('class');
+    const urlStudentsString = params.get('students');
+  
+    if (urlClassName || urlStudentsString) {
+      const storedClassName = localStorage.getItem('weeklyMessage_className');
+      const storedStudents = localStorage.getItem('weeklyMessage_students');
+      
+      // Convert stored students to names-only array for comparison
+      const storedStudentNames = storedStudents 
+        ? JSON.parse(storedStudents).map(s => s.name).join(',')
+        : '';
+  
+      const hasConflict = (
+        (urlClassName && storedClassName && urlClassName !== JSON.parse(storedClassName)) ||
+        (urlStudentsString && storedStudents && urlStudentsString !== storedStudentNames)
+      );
+  
+      if (hasConflict) {
+        // Convert URL students string to proper format for the data conflict modal
+        const urlStudentObjects = urlStudentsString
+          ? urlStudentsString.split(',').map(name => ({
+            id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+            name: name.trim()
+          }))
+          : null;
+  
+        setUrlData({
+          className: urlClassName || null,
+          students: urlStudentObjects
+        });
+        setSavedData({
+          className: storedClassName ? JSON.parse(storedClassName) : null,
+          students: storedStudents ? JSON.parse(storedStudents) : null
+        });
+        setShowDataConflict(true);
+      }
+    }
+  }, []);
+
+  const generateShareableUrl = useCallback(() => {
+    const queryParams = [];
+    
+    if (className) {
+      queryParams.push(`class=${encodeURIComponent(className)}`);
+    }
+    if (students.length) {
+      // Encode each name individually but keep the commas unencoded
+      const studentNames = students
+        .map(student => encodeURIComponent(student.name))
+        .join(',');
+      queryParams.push(`students=${studentNames}`);
+    }
+    
+    const queryString = queryParams.length ? `?${queryParams.join('&')}` : '';
+    return `${window.location.origin}${window.location.pathname}${queryString}`;
+  }, [className, students]);
+
+  // Add URL copy function
+  const copyUrl = useCallback(async () => {
+    const url = generateShareableUrl();
+    try {
+      setUrlCopyStatus('copying');
+      await navigator.clipboard.writeText(url);
+      setUrlCopyStatus('copied');
+      setShowCopyNotification(true);
+      setTimeout(() => {
+        setUrlCopyStatus('initial');
+        setShowCopyNotification(false);
+      }, 2000);
+    } catch (err) {
+      console.error('Failed to copy URL:', err);
+      setUrlCopyStatus('initial');
+    }
+  }, [generateShareableUrl]);
 
   const renderContent = () => {
     if (!isMounted) {
@@ -854,66 +978,130 @@ const WeeklyMessageGenerator = () => {
 
         {/* Copy and Clear Buttons */}
         <div className="flex gap-4 mt-8">
-          {/* Copy Button Container with Notification */}
+          {/* Message Copy Button Container */}
           <div className="relative flex-1">
-            {/* Copy Success Notification - Appears fixed above the button */}
-            {copyStatus === 'copied' && (
-              <div className="absolute -top-12 left-1/2 transform -translate-x-1/2">
-                <div className="bg-green-600 text-white px-4 py-2 rounded-md shadow-lg text-sm animate-fade-in">
-                  <div className="flex items-center gap-2">
-                    <Check className="h-4 w-4" />
-                    <span>تم نسخ الرسالة بنجاح</span>
-                  </div>
+            {/* Message Copy Success Notification */}
+            <div
+              className={`
+        absolute -top-12 left-1/2 transform -translate-x-1/2 
+        transition-opacity duration-200 
+        ${messageCopyStatus === 'copied' ? 'opacity-100' : 'opacity-0'}
+      `}
+            >
+              <div className="bg-green-600 text-white px-4 py-2 rounded-md shadow-lg text-sm whitespace-nowrap">
+                <div className="flex items-center gap-2">
+                  <Check className="h-4 w-4" />
+                  <span>تم نسخ الرسالة بنجاح</span>
                 </div>
               </div>
-            )}
+            </div>
 
-            {/* Copy Button with Dynamic States */}
+            {/* Message Copy Button */}
             <button
               onClick={copyToClipboard}
-              disabled={copyStatus === 'copying'}
+              disabled={messageCopyStatus === 'copying'}
               className={`
-        w-full inline-flex items-center justify-center rounded-md text-sm font-medium
-        h-12 px-6 py-2 transition-all duration-300
+        w-full inline-flex items-center justify-center 
+        rounded-md text-sm font-medium h-12 px-6 py-2 
+        transition-all duration-300
         disabled:opacity-70 disabled:cursor-not-allowed
-        ${copyStatus === 'copied'
+        ${messageCopyStatus === 'copied'
                   ? 'bg-green-600 hover:bg-green-700'
                   : 'bg-blue-600 hover:bg-blue-700'
                 }
       `}
             >
               <div className="flex items-center gap-2">
-                {copyStatus === 'copying' ? (
+                {messageCopyStatus === 'copying' ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
-                ) : copyStatus === 'copied' ? (
+                ) : messageCopyStatus === 'copied' ? (
                   <Check className="h-5 w-5 animate-scale-up" />
                 ) : (
                   <Copy className="h-5 w-5" />
                 )}
                 <span className="font-medium">
-                  {copyStatus === 'copying'
+                  {messageCopyStatus === 'copying'
                     ? 'جاري النسخ...'
-                    : copyStatus === 'copied'
+                    : messageCopyStatus === 'copied'
                       ? 'تم النسخ!'
-                      : 'نسخ الرسالة'}
+                      : 'نسخ الرسالة'
+                  }
+                </span>
+              </div>
+            </button>
+          </div>
+
+          {/* URL Copy Button Container */}
+          <div className="relative flex-1">
+            {/* URL Copy Success Notification */}
+            <div
+              className={`
+        absolute -top-12 left-1/2 transform -translate-x-1/2 
+        transition-opacity duration-200
+        ${urlCopyStatus === 'copied' ? 'opacity-100' : 'opacity-0'}
+      `}
+            >
+              <div className="bg-green-600 text-white px-4 py-2 rounded-md shadow-lg text-sm whitespace-nowrap">
+                <div className="flex items-center gap-2">
+                  <Check className="h-4 w-4" />
+                  <span>تم نسخ الرابط بنجاح</span>
+                </div>
+              </div>
+            </div>
+
+            {/* URL Copy Button */}
+            <button
+              onClick={copyUrl}
+              disabled={urlCopyStatus === 'copying'}
+              className={`
+        w-full inline-flex items-center justify-center 
+        rounded-md text-sm font-medium h-12 px-6 py-2 
+        transition-colors duration-200 group
+        ${urlCopyStatus === 'copied'
+                  ? 'bg-green-600 hover:bg-green-700'
+                  : 'bg-emerald-600 hover:bg-emerald-700'
+                }
+      `}
+            >
+              <div className="flex items-center gap-2">
+                {urlCopyStatus === 'copying' ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : urlCopyStatus === 'copied' ? (
+                  <Check className="h-5 w-5 animate-scale-up" />
+                ) : (
+                  <Link2 className="h-5 w-5 transition-transform group-hover:scale-110" />
+                )}
+                <span className="font-medium">
+                  {urlCopyStatus === 'copying'
+                    ? 'جاري النسخ...'
+                    : urlCopyStatus === 'copied'
+                      ? 'تم النسخ!'
+                      : 'نسخ الرابط'
+                  }
                 </span>
               </div>
             </button>
           </div>
 
           {/* New Session Button */}
-          <button
-            onClick={() => setShowConfirmation(true)}
-            className="flex-1 inline-flex items-center justify-center rounded-md text-sm font-medium 
-        bg-yellow-600 hover:bg-yellow-700 h-12 px-6 py-2 transition-colors duration-200 group"
-          >
-            <div className="flex items-center gap-2">
-              <PenLine className="h-5 w-5 transition-transform group-hover:scale-110" />
-              <span className="font-medium">حصة جديدة</span>
-            </div>
-          </button>
+          <div className="flex-1">
+            <button
+              onClick={() => setShowConfirmation(true)}
+              className="
+        w-full inline-flex items-center justify-center 
+        rounded-md text-sm font-medium h-12 px-6 py-2 
+        bg-yellow-600 hover:bg-yellow-700 
+        transition-colors duration-200 group
+      "
+            >
+              <div className="flex items-center gap-2">
+                <PenLine className="h-5 w-5 transition-transform group-hover:scale-110" />
+                <span className="font-medium">حصة جديدة</span>
+              </div>
+            </button>
+          </div>
 
-          {/* Render Confirmation Modal */}
+          {/* Confirmation Modal */}
           {showConfirmation && renderConfirmationModal()}
         </div>
       </div>
