@@ -1,8 +1,7 @@
 import './globals.css';
 
 export const metadata = {
-  title: 'Weekly Message Generator',
-  description: 'A tool for generating weekly messages',
+  title: 'منصة إنشاء الرسائل الأسبوعية',
 };
 
 export default function RootLayout({ children }) {

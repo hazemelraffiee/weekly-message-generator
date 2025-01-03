@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useCallback } from 'react';
 import { Plus, Trash2, Link2, Check, Loader2 } from 'lucide-react';
 
