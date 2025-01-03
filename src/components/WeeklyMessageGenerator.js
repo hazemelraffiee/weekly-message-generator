@@ -17,59 +17,7 @@ import {
 
 import { useHydration } from '@/context/HydrationContext'
 
-const useHydrated = () => {
-  const [isHydrated, setIsHydrated] = useState(false);
-
-  useEffect(() => {
-    setIsHydrated(true);
-  }, []);
-
-  return isHydrated;
-};
-
-
-const useParamsOrStorage = (storageKey, paramKey, initialValue = null) => {
-  const isHydrated = useHydration();
-  const [state, setState] = useState(() => {
-    // During SSR or before hydration, return initial value
-    if (!isHydrated) return initialValue;
-
-    try {
-      const params = new URLSearchParams(window.location.search);
-      const paramValue = params.get(paramKey);
-      
-      if (paramValue) {
-        if (paramKey === 'students') {
-          const studentNames = paramValue.split(',').filter(name => name.trim());
-          return studentNames.map(name => ({
-            id: generateStudentId(name.trim()),
-            name: decodeURIComponent(name.trim())
-          }));
-        }
-        return paramValue;
-      }
-      
-      const stored = localStorage.getItem(`weeklyMessage_${storageKey}`);
-      return stored ? JSON.parse(stored) : initialValue;
-    } catch (error) {
-      console.error(`Error in useParamsOrStorage for ${storageKey}:`, error);
-      return initialValue;
-    }
-  });
-
-  // Save to localStorage when state changes
-  useEffect(() => {
-    if (!isHydrated) return;
-    
-    try {
-      localStorage.setItem(`weeklyMessage_${storageKey}`, JSON.stringify(state));
-    } catch (error) {
-      console.error(`Error saving ${storageKey} to localStorage:`, error);
-    }
-  }, [storageKey, state, isHydrated]);
-
-  return [state, setState];
-};
+import { decodeData } from '@/components/LinkCreator'
 
 const useLocalStorage = (key, initialValue) => {
   const isHydrated = useHydration();
@@ -102,7 +50,7 @@ const useLocalStorage = (key, initialValue) => {
 const generateStudentId = (name) => {
   // Remove any whitespace and convert to lowercase
   const normalizedName = name.trim().toLowerCase();
-  
+
   // Create a simple hash from the name
   // This ensures the same name always generates the same ID
   let hash = 0;
@@ -111,93 +59,49 @@ const generateStudentId = (name) => {
     hash = ((hash << 5) - hash) + char;
     hash = hash & hash; // Convert to 32-bit integer
   }
-  
+
   // Convert to a string and make it positive
   return `student_${Math.abs(hash)}`;
 };
 
 const WeeklyMessageGenerator = () => {
 
-  const isHydrated = useHydration();
+  // 1. First, all useState hooks
 
-  if (!isHydrated) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="flex items-center gap-3 text-lg">
-          <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
-          <span>جاري التحميل...</span>
-        </div>
-      </div>
-    );
-  }
-
+  const [coreData, setCoreData] = useState({
+    className: '',
+    students: []
+  });
   const [isMounted, setIsMounted] = useState(false);
-
-  const [showCopyNotification, setShowCopyNotification] = useState(false);
-
   const [showConfirmation, setShowConfirmation] = useState(false);
 
-  const [showDataConflict, setShowDataConflict] = useState(false);
-  const [urlData, setUrlData] = useState(null);
-  const [savedData, setSavedData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [reportDate, setReportDate] = useLocalStorage('reportDate', (() => {
-    if (typeof window === 'undefined') {
-      return '';
-    }
+    if (typeof window === 'undefined') return '';
     const today = new Date();
     return today.toISOString().split('T')[0];
   })());
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  // Initialize today's date
-  const today = new Date();
-  const todayStr = today.toISOString().split('T')[0];
-
-  // Core state management
-  const [className, setClassName] = useParamsOrStorage('className', 'class');
-  const [students, setStudents] = useParamsOrStorage('students', 'students', []);
-  const [sections, setSections] = useLocalStorage('sections', {
-    weekStudy: {
-      enabled: true,
-      fields: []
-    },
-    notes: {
-      enabled: true,
-      fields: []
-    },
-    reminders: {
-      enabled: true,
-      fields: []
-    },
-    custom: {
-      enabled: false,
-      fields: []
-    }
-  });
-
   const [formattedDate, setFormattedDate] = useLocalStorage('formattedDate', '');
   const [attendance, setAttendance] = useLocalStorage('attendance', {});
-  const [newStudentName, setNewStudentName] = useState('');
-  const [messageCopyStatus, setMessageCopyStatus] = useState('initial');
-  const [urlCopyStatus, setUrlCopyStatus] = useState('initial');
+  const [sections, setSections] = useLocalStorage('sections', {
+    weekStudy: { enabled: true, fields: [] },
+    notes: { enabled: true, fields: [] },
+    reminders: { enabled: true, fields: [] },
+    custom: { enabled: false, fields: [] }
+  });
   const [homework, setHomework] = useLocalStorage('homework', {
-    general: {
-      enabled: true,
-      content: ''
-    },
-    specific: {
-      assignments: []
-    }
+    general: { enabled: true, content: '' },
+    specific: { assignments: [] }
   });
 
-  // Date formatting function
+  const [copyStatus, setCopyStatus] = useState('initial');
+  const [showNotification, setShowNotification] = useState(false);
+
+  // 2. All useCallback definitions
+
   const formatDate = useCallback((dateStr) => {
     const date = new Date(dateStr);
-
     const options = {
       weekday: 'long',
       year: 'numeric',
@@ -233,22 +137,14 @@ const WeeklyMessageGenerator = () => {
   }, []);
 
   const clearData = useCallback(() => {
-    // Preserve className and students
-    const preservedClassName = className;
-    const preservedStudents = students;
-
-    // Clear all localStorage keys that start with weeklyMessage_
+    // Just clear localStorage and reset everything
     Object.keys(localStorage).forEach(key => {
       if (key.startsWith('weeklyMessage_')) {
         localStorage.removeItem(key);
       }
     });
 
-    // Restore preserved data
-    setClassName(preservedClassName);
-    setStudents(preservedStudents);
-
-    // Reset other state to initial values
+    // Reset state to initial values
     setReportDate(() => {
       const today = new Date();
       return today.toISOString().split('T')[0];
@@ -261,61 +157,17 @@ const WeeklyMessageGenerator = () => {
         content: ''
       },
       specific: {
-        enabled: false,
         assignments: []
       }
     });
     setSections({
-      weekStudy: {
-        enabled: true,
-        fields: []
-      },
-      notes: {
-        enabled: true,
-        fields: []
-      },
-      reminders: {
-        enabled: true,
-        fields: []
-      },
-      custom: {
-        enabled: false,
-        fields: []
-      }
+      weekStudy: { enabled: true, fields: [] },
+      notes: { enabled: true, fields: [] },
+      reminders: { enabled: true, fields: [] },
+      custom: { enabled: false, fields: [] }
     });
-  }, [className, students, setClassName, setStudents, setReportDate, setFormattedDate,
-    setAttendance, setHomework, setSections]);
+  }, [setReportDate, setFormattedDate, setAttendance, setHomework, setSections]);
 
-  // Initialize formatted date on component mount and date changes
-  useEffect(() => {
-    setFormattedDate(formatDate(reportDate));
-  }, [reportDate, formatDate]);
-
-  // Student management functions
-  const addStudent = useCallback(() => {
-    if (newStudentName.trim()) {
-      setStudents(prev => {
-        const id = generateStudentId(newStudentName.trim());
-        // Return same array if student already exists
-        if (prev?.some(student => student.id === id)) {
-          return prev;
-        }
-        // Create new array with additional student
-        const newStudents = Array.isArray(prev) ? prev : [];
-        return [...newStudents, {
-          id,
-          name: newStudentName.trim()
-        }];
-      });
-      setNewStudentName('');
-    }
-  }, [newStudentName, setStudents]);  
-
-  const removeStudent = useCallback((studentId) => {
-    setStudents(prev => prev.filter(student => student.id !== studentId));
-  }, [setStudents]);
-
-  // Attendance management function
   const handleAttendanceChange = useCallback((studentId, isPresent, lateMinutes = '') => {
     setAttendance(prev => ({
       ...prev,
@@ -326,7 +178,6 @@ const WeeklyMessageGenerator = () => {
     }));
   }, []);
 
-  // Section management functions
   const handleSectionToggle = useCallback((sectionKey) => {
     setSections(prev => ({
       ...prev,
@@ -349,7 +200,6 @@ const WeeklyMessageGenerator = () => {
     }));
   }, [setSections]);
 
-  // Functions for managing section fields
   const addField = useCallback((section) => {
     setSections(prev => ({
       ...prev,
@@ -373,7 +223,6 @@ const WeeklyMessageGenerator = () => {
     }));
   }, [setSections]);
 
-  // Homework management functions
   const handleHomeworkChange = useCallback((type, value) => {
     setHomework(prev => ({
       ...prev,
@@ -432,10 +281,9 @@ const WeeklyMessageGenerator = () => {
     });
   }, []);
 
-  // Message generation helpers
   const getAttendanceMessage = useCallback(() => {
-    const presentStudents = students.filter(student => attendance[student.id]?.present);
-    const absentStudents = students.filter(student => !attendance[student.id]?.present);
+    const presentStudents = coreData.students.filter(student => attendance[student.id]?.present);
+    const absentStudents = coreData.students.filter(student => !attendance[student.id]?.present);
 
     let message = '';
 
@@ -468,21 +316,17 @@ const WeeklyMessageGenerator = () => {
     }
 
     return message;
-  }, [attendance, students]);
+  }, [attendance, coreData.students]);
 
   const getHomeworkMessage = useCallback(() => {
-    // If homework section is disabled entirely, return empty string
     if (!homework.general.enabled) return '';
-
     let message = '';
 
-    // Add general homework section if there's content
     if (homework.general.content) {
       message += '*الواجب العام:*\n';
       message += `${homework.general.content}\n\n`;
     }
 
-    // Add specific homework assignments
     const validAssignments = homework.specific.assignments.filter(
       assignment => assignment.studentIds.length > 0 && assignment.content.trim()
     );
@@ -491,18 +335,17 @@ const WeeklyMessageGenerator = () => {
       message += '*واجبات خاصة:*\n';
       validAssignments.forEach(assignment => {
         const studentNames = assignment.studentIds
-          .map(id => students.find(s => s.id === id)?.name)
+          .map(id => coreData.students.find(s => s.id === id)?.name)
           .filter(Boolean)
-          .join('، ');
+          .join(' و ');
         message += `🔸 *${studentNames}:*\n`;
         message += `${assignment.content}\n\n`;
       });
     }
 
     return message ? `📝 *الواجبات المنزلية:*\n${message}` : '';
-  }, [homework, students]);
+  }, [homework, coreData.students]);
 
-  // Main message generation function
   const generateMessage = useCallback(() => {
     // Opening and Welcome
     let message = 'بسم الله الرحمن الرحيم\n';
@@ -513,16 +356,16 @@ const WeeklyMessageGenerator = () => {
     message += 'نسعد بمشاركتكم تقرير هذا اليوم عن أبنائكم\n\n';
 
     // Class and Date Information
-    message += `👥 *فصل ${className}*\n`;
+    message += `👥 *فصل ${coreData.className}*\n`;
     message += `📅 *تقرير يوم ${formattedDate}*\n\n`;
 
-    // Attendance Section with improved header
-    if (students.length > 0) {
+    // Attendance Section
+    if (coreData.students.length > 0) {
       message += '📊 *سجل الحضور والغياب*\n';
       message += getAttendanceMessage() + '\n';
     }
 
-    // Dynamic Sections with improved headers
+    // Dynamic Sections
     Object.entries(sections).forEach(([sectionKey, section]) => {
       if (section.enabled && section.fields.some(f => f.key && f.value)) {
         const sectionIcons = {
@@ -569,57 +412,147 @@ const WeeklyMessageGenerator = () => {
 
     return message;
   }, [
-    className,
+    coreData.className,
     formattedDate,
-    students,
+    coreData.students,
     sections,
     getAttendanceMessage,
     getHomeworkMessage
   ]);
 
-  // Clipboard functionality
   const copyToClipboard = useCallback(() => {
     const message = generateMessage();
-    const textarea = document.createElement('textarea');
-    textarea.value = message;
-    textarea.style.position = 'fixed';
-    textarea.style.opacity = '0';
-    textarea.style.pointerEvents = 'none';
-    document.body.appendChild(textarea);
 
-    try {
-      setMessageCopyStatus('copying');
-      textarea.select();
-      document.execCommand('copy');
-      setMessageCopyStatus('copied');
-      setShowCopyNotification(true);
-      setTimeout(() => {
-        setMessageCopyStatus('initial');
-        setShowCopyNotification(false);
-      }, 2000);
-    } catch (err) {
-      console.error('Failed to copy:', err);
-      if (navigator.clipboard) {
-        navigator.clipboard.writeText(message)
-          .then(() => {
-            setMessageCopyStatus('copied');
-            setShowCopyNotification(true);
-            setTimeout(() => {
-              setMessageCopyStatus('initial');
-              setShowCopyNotification(false);
-            }, 2000);
-          })
-          .catch((clipErr) => {
-            console.error('Clipboard API failed:', clipErr);
-            setMessageCopyStatus('initial');
-          });
-      } else {
-        setMessageCopyStatus('initial');
-      }
-    } finally {
-      document.body.removeChild(textarea);
-    }
+    setCopyStatus('copying');
+    navigator.clipboard.writeText(message)
+      .then(() => {
+        setCopyStatus('copied');
+        setShowNotification(true);
+        setTimeout(() => {
+          setCopyStatus('initial');
+          setShowNotification(false);
+        }, 2000);
+      })
+      .catch((err) => {
+        console.error('Failed to copy:', err);
+        setCopyStatus('initial');
+      });
   }, [generateMessage]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const params = new URLSearchParams(window.location.search);
+    const encodedData = params.get('data');
+
+    if (encodedData) {
+      try {
+        const decodedData = decodeData(encodedData);
+        if (decodedData && decodedData.className && Array.isArray(decodedData.students)) {
+          setCoreData({
+            className: decodedData.className,
+            students: decodedData.students.map(name => ({
+              id: generateStudentId(name),
+              name: name
+            }))
+          });
+        }
+      } catch (error) {
+        console.error('Error decoding data:', error);
+      }
+    }
+    setIsLoading(false);
+  }, []);
+
+  // Effect to decode and validate data parameter
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const params = new URLSearchParams(window.location.search);
+    const encodedData = params.get('data');
+
+    if (encodedData) {
+      try {
+        const decodedData = decodeData(encodedData);
+        if (decodedData && decodedData.className && Array.isArray(decodedData.students)) {
+          setCoreData({
+            className: decodedData.className,
+            students: decodedData.students.map(name => ({
+              id: generateStudentId(name),
+              name: name
+            }))
+          });
+        }
+      } catch (error) {
+        console.error('Error decoding data:', error);
+        // Show error UI
+      }
+    }
+  }, []); // Empty dependency array since this should only run once
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    setFormattedDate(formatDate(reportDate));
+  }, [reportDate, formatDate]);
+
+  // Show error state if we don't have valid core data
+  if (!coreData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-900 text-gray-100" dir="rtl">
+        <div className="max-w-md text-center p-8">
+          <h1 className="text-2xl font-bold mb-4 text-red-500">خطأ في البيانات</h1>
+          <p className="mb-6">
+            عذراً، لا يمكن عرض الصفحة. يرجى التأكد من صحة الرابط أو العودة إلى صفحة إنشاء الرابط.
+          </p>
+          <a
+            href="/linkcreator"
+            className="inline-flex items-center justify-center px-6 py-3 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+          >
+            العودة إلى صفحة إنشاء الرابط
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  const isHydrated = useHydration();
+
+  if (isLoading || !isHydrated) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="flex items-center gap-3 text-lg">
+          <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+          <span>جاري التحميل...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!coreData.className || !coreData.students.length) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-900 text-gray-100" dir="rtl">
+        <div className="max-w-md text-center p-8">
+          <h1 className="text-2xl font-bold mb-4 text-red-500">خطأ في البيانات</h1>
+          <p className="mb-6">
+            عذراً، لا يمكن عرض الصفحة. يرجى التأكد من صحة الرابط أو العودة إلى صفحة إنشاء الرابط.
+          </p>
+          <a
+            href="/linkcreator"
+            className="inline-flex items-center justify-center px-6 py-3 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+          >
+            العودة إلى صفحة إنشاء الرابط
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  // Initialize today's date
+  const today = new Date();
+  const todayStr = today.toISOString().split('T')[0];
 
   const renderConfirmationModal = () => (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -629,9 +562,6 @@ const WeeklyMessageGenerator = () => {
         </h3>
         <p className="text-sm text-gray-400 mb-6">
           سيتم مسح جميع البيانات الحالية وبدء حصة جديدة. لا يمكن التراجع عن هذا الإجراء.
-        </p>
-        <p className="text-sm text-gray-400 mb-6">
-          إسم الفصل وأسماء الطلاب لن يتم حذفهم.
         </p>
         <div className="flex justify-end gap-4">
           <button
@@ -654,85 +584,6 @@ const WeeklyMessageGenerator = () => {
     </div>
   );
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-  
-    const params = new URLSearchParams(window.location.search);
-    const urlClassName = params.get('class');
-    const urlStudentsString = params.get('students');
-  
-    if (urlClassName || urlStudentsString) {
-      const storedClassName = localStorage.getItem('weeklyMessage_className');
-      const storedStudents = localStorage.getItem('weeklyMessage_students');
-      
-      // Convert stored students to names-only array for comparison
-      const storedStudentNames = storedStudents 
-        ? JSON.parse(storedStudents).map(s => s.name).join(',')
-        : '';
-  
-      const hasConflict = (
-        (urlClassName && storedClassName && urlClassName !== JSON.parse(storedClassName)) ||
-        (urlStudentsString && storedStudents && urlStudentsString !== storedStudentNames)
-      );
-  
-      if (hasConflict) {
-        // Convert URL students string to proper format for the data conflict modal
-        const urlStudentObjects = urlStudentsString
-          ? urlStudentsString.split(',').map(name => ({
-            id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-            name: name.trim()
-          }))
-          : null;
-  
-        setUrlData({
-          className: urlClassName || null,
-          students: urlStudentObjects
-        });
-        setSavedData({
-          className: storedClassName ? JSON.parse(storedClassName) : null,
-          students: storedStudents ? JSON.parse(storedStudents) : null
-        });
-        setShowDataConflict(true);
-      }
-    }
-  }, []);
-
-  const generateShareableUrl = useCallback(() => {
-    const queryParams = [];
-    
-    if (className) {
-      queryParams.push(`class=${encodeURIComponent(className)}`);
-    }
-    if (students.length) {
-      // Encode each name individually but keep the commas unencoded
-      const studentNames = students
-        .map(student => encodeURIComponent(student.name))
-        .join(',');
-      queryParams.push(`students=${studentNames}`);
-    }
-    
-    const queryString = queryParams.length ? `?${queryParams.join('&')}` : '';
-    return `${window.location.origin}${window.location.pathname}${queryString}`;
-  }, [className, students]);
-
-  // Add URL copy function
-  const copyUrl = useCallback(async () => {
-    const url = generateShareableUrl();
-    try {
-      setUrlCopyStatus('copying');
-      await navigator.clipboard.writeText(url);
-      setUrlCopyStatus('copied');
-      setShowCopyNotification(true);
-      setTimeout(() => {
-        setUrlCopyStatus('initial');
-        setShowCopyNotification(false);
-      }, 2000);
-    } catch (err) {
-      console.error('Failed to copy URL:', err);
-      setUrlCopyStatus('initial');
-    }
-  }, [generateShareableUrl]);
-
   const renderContent = () => {
     if (!isMounted) {
       return (
@@ -747,112 +598,133 @@ const WeeklyMessageGenerator = () => {
 
     return (
       <div className="container mx-auto p-4 max-w-4xl text-gray-100" dir="rtl">
-        <div className="flex items-center gap-3 mb-8">
-          <GraduationCap className="h-8 w-8 text-blue-500" />
-          <h1 className="text-2xl font-bold">منشئ الرسائل الأسبوعية</h1>
+        {/* Header */}
+        <div className="relative mb-8 overflow-hidden rounded-lg bg-gradient-to-r from-blue-600 to-blue-800 p-8">
+          <div className="absolute inset-0 bg-grid-white/10" />
+          <div className="relative space-y-4">
+            <div className="flex items-center gap-4">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm">
+                <GraduationCap className="h-8 w-8 text-white" />
+              </div>
+              <h1 className="text-2xl font-bold text-white">{coreData.className}</h1>
+            </div>
+            <div className="flex items-center gap-6 text-blue-100">
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                <span>{coreData.students.length} طالب</span>
+              </div>
+              {/* Rest of the header content... */}
+            </div>
+          </div>
         </div>
 
         {/* Class Info Section */}
         <div className="mb-4 rounded-lg border border-gray-700 bg-gray-800/50 shadow-sm backdrop-blur-sm">
+          {/* Section Header */}
           <div className="flex items-center gap-3 p-6 border-b border-gray-700">
             <Users className="h-5 w-5 text-blue-400" />
             <h3 className="text-lg font-semibold">معلومات الفصل</h3>
           </div>
-          <div className="p-6 pt-0 space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium flex items-center gap-2">
-                <PenLine className="h-4 w-4 text-gray-400" />
-                اسم الفصل
-              </label>
-              <input
-                className="flex h-10 w-full rounded-md border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-gray-100 ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                value={className}
-                onChange={(e) => setClassName(e.target.value)}
-                placeholder="أدخل اسم الفصل"
-                dir="rtl"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-gray-400" />
-                التاريخ
-              </label>
-              <input
-                type="date"
-                value={reportDate}
-                onChange={(e) => setReportDate(e.target.value)}
-                className="flex h-10 w-full rounded-md border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-gray-100 text-right"
-              />
-              <div className="text-sm text-gray-400 mt-2 flex items-center gap-2">
-                <Clock className="h-4 w-4" />
-                {formattedDate}
+
+          {/* Section Content */}
+          <div className="p-6 space-y-4">
+            {/* Date Selection and Display */}
+            <div className="space-y-3">
+              {/* Date Input with Label */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-gray-400" />
+                  تاريخ التقرير
+                </label>
+                <input
+                  type="date"
+                  value={reportDate}
+                  onChange={(e) => {
+                    setReportDate(e.target.value);
+                    setFormattedDate(formatDate(e.target.value));
+                  }}
+                  className="flex h-10 w-full rounded-md border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-gray-100 text-right"
+                />
+              </div>
+
+              {/* Formatted Date Display */}
+              <div className="rounded-md border border-gray-700 bg-gray-800/50 p-4 space-y-2">
+                <div className="text-sm font-medium text-gray-400">سيظهر في الرسالة كالتالي:</div>
+                <div className="flex items-center gap-2 text-gray-100">
+                  <Clock className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                  <span className="text-sm leading-relaxed">{formattedDate}</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
         {/* Attendance Section */}
-        <div className="mb-4 rounded-lg border border-gray-700 bg-gray-800 shadow-sm">
-          <div className="flex flex-col space-y-1.5 p-6">
-            <h3 className="text-lg font-semibold leading-none tracking-tight">
-              الحضور والغياب
-            </h3>
+        <div className="border rounded-lg border-gray-700 bg-gray-800 overflow-hidden">
+          {/* Section Header */}
+          <div className="flex items-center gap-3 p-4 border-b border-gray-700 bg-gray-750">
+            <Users className="h-5 w-5 text-blue-400" />
+            <h3 className="text-lg font-semibold">سجل الحضور</h3>
+            <span className="ml-auto text-sm text-gray-400">
+              {coreData.students.filter(student => attendance[student.id]?.present).length} / {coreData.students.length} حاضر
+            </span>
           </div>
-          <div className="p-6 pt-0 space-y-4">
-            <div className="flex gap-2">
-              <input
-                className="flex-1 h-10 rounded-md border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-gray-100"
-                value={newStudentName}
-                onChange={(e) => setNewStudentName(e.target.value)}
-                placeholder="اسم الطالب"
-                dir="rtl"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    addStudent();
-                  }
-                }}
-              />
-              <button
-                onClick={addStudent}
-                className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-gray-700 hover:bg-gray-700 h-10 px-4 py-2"
-              >
-                <Plus className="h-4 w-4 inline-block ml-2" />
-                إضافة طالب
-              </button>
-            </div>
 
-            {students.length > 0 && (
-              <div className="border rounded-lg p-4 space-y-3">
-                {students.map((student) => (
-                  <div key={student.id} className="flex items-center gap-3 p-2 bg-gray-700 rounded">
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 rounded border border-gray-600 bg-gray-700"
-                      checked={attendance[student.id]?.present || false}
-                      onChange={(e) => handleAttendanceChange(student.id, e.target.checked)}
-                    />
-                    <span className="flex-1">{student.name}</span>
-                    {attendance[student.id]?.present && (
+          {/* Attendance Grid */}
+          <div className="grid grid-cols-2 gap-4 p-4">
+            {coreData.students.map((student) => {
+              const isPresent = attendance[student.id]?.present || false;
+              const lateMinutes = attendance[student.id]?.lateMinutes || '';
+
+              return (
+                <div
+                  key={student.id}
+                  onClick={() => handleAttendanceChange(student.id, !isPresent)}
+                  className={`
+            rounded-lg p-3 flex items-center gap-3 transition-all duration-200 cursor-pointer
+            hover:bg-opacity-40 active:scale-[0.99]
+            ${isPresent
+                      ? 'bg-green-900/30 border border-green-700'
+                      : 'bg-red-900/30 border border-red-700'}
+          `}
+                >
+                  {/* Attendance Toggle Icon */}
+                  <div
+                    className={`
+              w-6 h-6 rounded-full flex items-center justify-center 
+              ${isPresent
+                        ? 'bg-green-500 text-white'
+                        : 'bg-red-500 text-white'}
+            `}
+                  >
+                    {isPresent ? '✓' : '✗'}
+                  </div>
+
+                  {/* Student Name */}
+                  <span className={`flex-1 ${isPresent ? 'text-green-200' : 'text-red-200'}`}>
+                    {student.name}
+                  </span>
+
+                  {/* Late Minutes Input */}
+                  {isPresent && (
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-yellow-400" />
                       <input
                         type="number"
                         placeholder="دقائق التأخير"
-                        className="w-32 text-center h-10 rounded-md border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-gray-100 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:ring-offset-2"
-                        value={attendance[student.id]?.lateMinutes || ''}
+                        className="w-20 text-center h-8 rounded-md border border-gray-700 bg-gray-800 px-2 py-1 text-sm text-gray-100"
+                        value={lateMinutes}
+                        onClick={(e) => {
+                          // Prevent the parent div's click event from triggering
+                          e.stopPropagation();
+                        }}
                         onChange={(e) => handleAttendanceChange(student.id, true, e.target.value)}
                       />
-                    )}
-                    <button
-                      onClick={() => removeStudent(student.id)}
-                      className="inline-flex items-center justify-center rounded-md text-sm font-medium h-10 w-10 hover:bg-red-600/10 text-red-600 transition-colors"
-                      title="حذف الطالب"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -898,7 +770,7 @@ const WeeklyMessageGenerator = () => {
                           <div className="bg-gray-900 rounded-lg p-3 border border-gray-700">
                             <div className="text-sm text-gray-400 mb-2">اختر الطلاب:</div>
                             <div className="grid grid-cols-2 gap-2">
-                              {students.map(student => (
+                              {coreData.students.map(student => (
                                 <div key={student.id} className="flex items-center gap-2 p-1">
                                   <input
                                     type="checkbox"
@@ -1019,18 +891,45 @@ const WeeklyMessageGenerator = () => {
           );
         })}
 
-        {/* Copy and Clear Buttons */}
-        <div className="flex gap-4 mt-8">
-          {/* Message Copy Button Container */}
-          <div className="relative flex-1">
-            {/* Message Copy Success Notification */}
-            <div
+        {/* Footer Actions */}
+        <div className="relative">
+          <div className="mt-8 grid grid-cols-2 gap-4">
+            {/* Copy Message Button */}
+            <button
+              onClick={copyToClipboard}
+              disabled={copyStatus === 'copying'}
               className={`
-        absolute -top-12 left-1/2 transform -translate-x-1/2 
-        transition-opacity duration-200 
-        ${messageCopyStatus === 'copied' ? 'opacity-100' : 'opacity-0'}
+        inline-flex items-center justify-center rounded-md text-sm font-medium 
+        h-12 px-6 py-2 transition-colors text-white group
+        ${copyStatus === 'copied'
+                  ? 'bg-green-600 hover:bg-green-700'
+                  : 'bg-blue-600 hover:bg-blue-700'}
       `}
             >
+              <div className="flex items-center gap-2">
+                {copyStatus === 'copying' ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : copyStatus === 'copied' ? (
+                  <Check className="h-5 w-5 transition-transform group-hover:scale-110" />
+                ) : (
+                  <Copy className="h-5 w-5 transition-transform group-hover:scale-110" />
+                )}
+                <span className="font-medium">
+                  {copyStatus === 'copying'
+                    ? 'جاري النسخ...'
+                    : copyStatus === 'copied'
+                      ? 'تم النسخ!'
+                      : 'نسخ الرسالة'}
+                </span>
+              </div>
+            </button>
+
+            {/* Copy Success Notification */}
+            <div className={`
+      absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-full
+      transition-opacity duration-200 pointer-events-none
+      ${copyStatus === 'copied' ? 'opacity-100' : 'opacity-0'}  
+    `}>
               <div className="bg-green-600 text-white px-4 py-2 rounded-md shadow-lg text-sm whitespace-nowrap">
                 <div className="flex items-center gap-2">
                   <Check className="h-4 w-4" />
@@ -1039,113 +938,48 @@ const WeeklyMessageGenerator = () => {
               </div>
             </div>
 
-            {/* Message Copy Button */}
-            <button
-              onClick={copyToClipboard}
-              disabled={messageCopyStatus === 'copying'}
-              className={`
-        w-full inline-flex items-center justify-center 
-        rounded-md text-sm font-medium h-12 px-6 py-2 
-        transition-all duration-300
-        disabled:opacity-70 disabled:cursor-not-allowed
-        ${messageCopyStatus === 'copied'
-                  ? 'bg-green-600 hover:bg-green-700'
-                  : 'bg-blue-600 hover:bg-blue-700'
-                }
-      `}
-            >
-              <div className="flex items-center gap-2">
-                {messageCopyStatus === 'copying' ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : messageCopyStatus === 'copied' ? (
-                  <Check className="h-5 w-5 animate-scale-up" />
-                ) : (
-                  <Copy className="h-5 w-5" />
-                )}
-                <span className="font-medium">
-                  {messageCopyStatus === 'copying'
-                    ? 'جاري النسخ...'
-                    : messageCopyStatus === 'copied'
-                      ? 'تم النسخ!'
-                      : 'نسخ الرسالة'
-                  }
-                </span>
-              </div>
-            </button>
-          </div>
-
-          {/* URL Copy Button Container */}
-          <div className="relative flex-1">
-            {/* URL Copy Success Notification */}
-            <div
-              className={`
-        absolute -top-12 left-1/2 transform -translate-x-1/2 
-        transition-opacity duration-200
-        ${urlCopyStatus === 'copied' ? 'opacity-100' : 'opacity-0'}
-      `}
-            >
-              <div className="bg-green-600 text-white px-4 py-2 rounded-md shadow-lg text-sm whitespace-nowrap">
-                <div className="flex items-center gap-2">
-                  <Check className="h-4 w-4" />
-                  <span>تم نسخ الرابط بنجاح</span>
-                </div>
-              </div>
-            </div>
-
-            {/* URL Copy Button */}
-            <button
-              onClick={copyUrl}
-              disabled={urlCopyStatus === 'copying'}
-              className={`
-        w-full inline-flex items-center justify-center 
-        rounded-md text-sm font-medium h-12 px-6 py-2 
-        transition-colors duration-200 group
-        ${urlCopyStatus === 'copied'
-                  ? 'bg-green-600 hover:bg-green-700'
-                  : 'bg-emerald-600 hover:bg-emerald-700'
-                }
-      `}
-            >
-              <div className="flex items-center gap-2">
-                {urlCopyStatus === 'copying' ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : urlCopyStatus === 'copied' ? (
-                  <Check className="h-5 w-5 animate-scale-up" />
-                ) : (
-                  <Link2 className="h-5 w-5 transition-transform group-hover:scale-110" />
-                )}
-                <span className="font-medium">
-                  {urlCopyStatus === 'copying'
-                    ? 'جاري النسخ...'
-                    : urlCopyStatus === 'copied'
-                      ? 'تم النسخ!'
-                      : 'نسخ الرابط'
-                  }
-                </span>
-              </div>
-            </button>
-          </div>
-
-          {/* New Session Button */}
-          <div className="flex-1">
+            {/* New Session Button */}
             <button
               onClick={() => setShowConfirmation(true)}
-              className="
-        w-full inline-flex items-center justify-center 
-        rounded-md text-sm font-medium h-12 px-6 py-2 
-        bg-yellow-600 hover:bg-yellow-700 
-        transition-colors duration-200 group
-      "
+              className="inline-flex items-center justify-center rounded-md text-sm font-medium h-12 px-6 py-2 bg-yellow-600 hover:bg-yellow-700 transition-colors text-white group"
             >
               <div className="flex items-center gap-2">
                 <PenLine className="h-5 w-5 transition-transform group-hover:scale-110" />
                 <span className="font-medium">حصة جديدة</span>
               </div>
             </button>
-          </div>
 
-          {/* Confirmation Modal */}
-          {showConfirmation && renderConfirmationModal()}
+            {/* Confirmation Modal */}
+            {showConfirmation && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-gray-800 rounded-lg p-6 max-w-sm w-full shadow-lg">
+                  <h3 className="text-lg font-semibold text-gray-100 mb-4">
+                    هل أنت متأكد؟
+                  </h3>
+                  <p className="text-sm text-gray-400 mb-6">
+                    سيتم مسح جميع البيانات الحالية وبدء حصة جديدة. لا يمكن التراجع عن هذا الإجراء.
+                  </p>
+                  <div className="flex justify-end gap-4">
+                    <button
+                      onClick={() => setShowConfirmation(false)}
+                      className="px-4 py-2 rounded-md bg-gray-600 text-gray-100 hover:bg-gray-700 transition-colors"
+                    >
+                      إلغاء
+                    </button>
+                    <button
+                      onClick={() => {
+                        clearData();
+                        setShowConfirmation(false);
+                      }}
+                      className="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700 transition-colors"
+                    >
+                      تأكيد
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );
