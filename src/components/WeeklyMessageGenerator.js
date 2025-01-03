@@ -19,6 +19,8 @@ import { useHydration } from '@/context/HydrationContext'
 
 import { decodeData } from '@/components/LinkCreator'
 
+import AttendanceCard from '@/components/AttendanceCard';
+
 const useLocalStorage = (key, initialValue) => {
   const isHydrated = useHydration();
   const [state, setState] = useState(() => {
@@ -137,19 +139,16 @@ const WeeklyMessageGenerator = () => {
   }, []);
 
   const clearData = useCallback(() => {
-    // Just clear localStorage and reset everything
+    // Clear localStorage first
     Object.keys(localStorage).forEach(key => {
       if (key.startsWith('weeklyMessage_')) {
         localStorage.removeItem(key);
       }
     });
 
-    // Reset state to initial values
-    setReportDate(() => {
-      const today = new Date();
-      return today.toISOString().split('T')[0];
-    });
-    setFormattedDate('');
+    // Reset all states
+    setReportDate(new Date().toISOString().split('T')[0]);
+    setFormattedDate(''); // This was missing
     setAttendance({});
     setHomework({
       general: {
@@ -166,14 +165,18 @@ const WeeklyMessageGenerator = () => {
       reminders: { enabled: true, fields: [] },
       custom: { enabled: false, fields: [] }
     });
-  }, [setReportDate, setFormattedDate, setAttendance, setHomework, setSections]);
 
-  const handleAttendanceChange = useCallback((studentId, isPresent, lateMinutes = '') => {
+    // Force a re-render
+    setIsMounted(false);
+    setTimeout(() => setIsMounted(true), 0);
+  }, [setReportDate, setFormattedDate, setAttendance, setHomework, setSections, setIsMounted]);
+
+  const handleAttendanceChange = useCallback((studentId, attendanceData) => {
     setAttendance(prev => ({
       ...prev,
       [studentId]: {
-        present: isPresent,
-        lateMinutes: lateMinutes
+        present: attendanceData.present,
+        lateMinutes: attendanceData.lateMinutes
       }
     }));
   }, []);
@@ -282,32 +285,58 @@ const WeeklyMessageGenerator = () => {
   }, []);
 
   const getAttendanceMessage = useCallback(() => {
+    // Separate students into present and absent groups
     const presentStudents = coreData.students.filter(student => attendance[student.id]?.present);
     const absentStudents = coreData.students.filter(student => !attendance[student.id]?.present);
 
     let message = '';
 
+    // Handle present students (including those who are late)
     if (presentStudents.length > 0) {
       message += '*الطلاب الحاضرون:*\n';
+
+      // Sort students: on-time first, then by lateness duration
       presentStudents
         .sort((a, b) => {
           const aLate = attendance[a.id]?.lateMinutes;
           const bLate = attendance[b.id]?.lateMinutes;
+
+          // If one is late and the other isn't, put the on-time student first
           if (aLate && !bLate) return 1;
           if (!aLate && bLate) return -1;
+
+          // If both are late, sort by duration ('أكثر' should come last)
+          if (aLate && bLate) {
+            if (aLate === 'أكثر') return 1;
+            if (bLate === 'أكثر') return -1;
+            return parseInt(aLate) - parseInt(bLate);
+          }
+
+          // If neither is late, sort by name
           return a.name.localeCompare(b.name);
         })
         .forEach(student => {
           const lateMinutes = attendance[student.id]?.lateMinutes;
-          message += lateMinutes
-            ? `⏰ ${student.name} (متأخر ${lateMinutes} دقيقة)\n`
-            : `✅ ${student.name}\n`;
+
+          if (!lateMinutes) {
+            // Student is present and on time
+            message += `✅ ${student.name}\n`;
+          } else {
+            // Student is late
+            const lateDisplay = lateMinutes === 'أكثر'
+              ? 'متأخر أكثر من ساعة'
+              : `متأخر ${lateMinutes} دقيقة`;
+            message += `⏰ ${student.name} (${lateDisplay})\n`;
+          }
         });
     }
 
+    // Handle absent students
     if (absentStudents.length > 0) {
       if (message) message += '\n';
       message += '*الطلاب الغائبون:*\n';
+
+      // Sort absent students alphabetically
       absentStudents
         .sort((a, b) => a.name.localeCompare(b.name))
         .forEach(student => {
@@ -498,6 +527,13 @@ const WeeklyMessageGenerator = () => {
     setFormattedDate(formatDate(reportDate));
   }, [reportDate, formatDate]);
 
+  // Ensure date is formatted immediately when component mounts
+  useEffect(() => {
+    if (!reportDate && typeof window !== 'undefined') {
+      setReportDate(new Date().toISOString().split('T')[0]);
+    }
+  }, []);
+
   // Show error state if we don't have valid core data
   if (!coreData) {
     return (
@@ -607,22 +643,31 @@ const WeeklyMessageGenerator = () => {
     return (
       <div className="container mx-auto p-4 max-w-4xl text-gray-100" dir="rtl">
         {/* Header */}
-        <div className="relative mb-8 overflow-hidden rounded-lg bg-gradient-to-r from-blue-600 to-blue-800 p-8">
-          <div className="absolute inset-0 bg-grid-white/10" />
-          <div className="relative space-y-4">
-            <div className="flex items-center gap-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm">
-                <GraduationCap className="h-8 w-8 text-white" />
+        <div className="relative">
+          {/* Header with gradient */}
+          <div className="relative overflow-hidden rounded-lg bg-gradient-to-r from-blue-600 to-blue-800 p-8">
+            <div className="absolute inset-0 bg-grid-white/10" />
+            <div className="relative">
+              <div className="flex items-center gap-4">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm">
+                  <GraduationCap className="h-8 w-8 text-white" />
+                </div>
+                <h1 className="text-2xl font-bold text-white">{coreData.className}</h1>
               </div>
-              <h1 className="text-2xl font-bold text-white">{coreData.className}</h1>
             </div>
-            <div className="flex items-center gap-6 text-blue-100">
+          </div>
+
+          {/* New Session Button Container */}
+          <div className="mt-4 mb-8 md:mb-[28px] md:mt-[-60px] px-4 md:px-0 md:absolute md:left-8">
+            <button
+              onClick={() => setShowConfirmation(true)}
+              className="w-full md:w-auto inline-flex items-center justify-center rounded-md text-sm font-medium h-12 px-6 bg-amber-600 hover:bg-amber-700 transition-colors text-white backdrop-blur-sm group shadow-lg"
+            >
               <div className="flex items-center gap-2">
-                <Users className="h-4 w-4" />
-                <span>{coreData.students.length} طالب</span>
+                <PenLine className="h-5 w-5 transition-transform group-hover:scale-110" />
+                <span className="font-medium">حصة جديدة</span>
               </div>
-              {/* Rest of the header content... */}
-            </div>
+            </button>
           </div>
         </div>
 
@@ -630,8 +675,10 @@ const WeeklyMessageGenerator = () => {
         <div className="mb-4 rounded-lg border border-gray-700 bg-gray-800/50 shadow-sm backdrop-blur-sm">
           {/* Section Header */}
           <div className="flex items-center gap-3 p-6 border-b border-gray-700">
-            <Users className="h-5 w-5 text-blue-400" />
-            <h3 className="text-lg font-semibold">معلومات الفصل</h3>
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-blue-400" />
+              تاريخ الحصة
+            </h3>
           </div>
 
           {/* Section Content */}
@@ -640,10 +687,7 @@ const WeeklyMessageGenerator = () => {
             <div className="space-y-3">
               {/* Date Input with Label */}
               <div className="space-y-2">
-                <label className="text-sm font-medium flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-gray-400" />
-                  تاريخ التقرير
-                </label>
+
                 <input
                   type="date"
                   value={reportDate}
@@ -678,61 +722,16 @@ const WeeklyMessageGenerator = () => {
             </span>
           </div>
 
-          {/* Attendance Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4">
-            {coreData.students.map((student) => {
-              const isPresent = attendance[student.id]?.present || false;
-              const lateMinutes = attendance[student.id]?.lateMinutes || '';
-
-              return (
-                <div
-                  key={student.id}
-                  onClick={() => handleAttendanceChange(student.id, !isPresent)}
-                  className={`
-            rounded-lg p-3 flex items-center gap-3 transition-all duration-200 cursor-pointer
-            hover:bg-opacity-40 active:scale-[0.99]
-            ${isPresent
-                      ? 'bg-green-900/30 border border-green-700'
-                      : 'bg-red-900/30 border border-red-700'}
-          `}
-                >
-                  {/* Attendance Toggle Icon */}
-                  <div
-                    className={`
-              w-6 h-6 rounded-full flex items-center justify-center 
-              ${isPresent
-                        ? 'bg-green-500 text-white'
-                        : 'bg-red-500 text-white'}
-            `}
-                  >
-                    {isPresent ? '✓' : '✗'}
-                  </div>
-
-                  {/* Student Name */}
-                  <span className={`flex-1 ${isPresent ? 'text-green-200' : 'text-red-200'}`}>
-                    {student.name}
-                  </span>
-
-                  {/* Late Minutes Input */}
-                  {isPresent && (
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-yellow-400" />
-                      <input
-                        type="number"
-                        placeholder="دقائق التأخير"
-                        className="w-20 text-center h-8 rounded-md border border-gray-700 bg-gray-800 px-2 py-1 text-sm text-gray-100"
-                        value={lateMinutes}
-                        onClick={(e) => {
-                          // Prevent the parent div's click event from triggering
-                          e.stopPropagation();
-                        }}
-                        onChange={(e) => handleAttendanceChange(student.id, true, e.target.value)}
-                      />
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+          {/* Attendance Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+            {coreData.students.map((student) => (
+              <AttendanceCard
+                key={student.id}
+                student={student}
+                initialStatus={attendance[student.id]}
+                onAttendanceChange={handleAttendanceChange}
+              />
+            ))}
           </div>
         </div>
 
@@ -901,14 +900,14 @@ const WeeklyMessageGenerator = () => {
 
         {/* Footer Actions */}
         <div className="relative">
-          <div className="mt-8 grid grid-cols-2 gap-4">
+          <div className="mt-8 flex justify-center">
             {/* Copy Message Button */}
             <button
               onClick={copyToClipboard}
               disabled={copyStatus === 'copying'}
               className={`
         inline-flex items-center justify-center rounded-md text-sm font-medium 
-        h-12 px-6 py-2 transition-colors text-white group
+        h-12 px-6 py-2 transition-colors text-white group w-full max-w-md
         ${copyStatus === 'copied'
                   ? 'bg-green-600 hover:bg-green-700'
                   : 'bg-blue-600 hover:bg-blue-700'}
@@ -945,17 +944,6 @@ const WeeklyMessageGenerator = () => {
                 </div>
               </div>
             </div>
-
-            {/* New Session Button */}
-            <button
-              onClick={() => setShowConfirmation(true)}
-              className="inline-flex items-center justify-center rounded-md text-sm font-medium h-12 px-6 py-2 bg-yellow-600 hover:bg-yellow-700 transition-colors text-white group"
-            >
-              <div className="flex items-center gap-2">
-                <PenLine className="h-5 w-5 transition-transform group-hover:scale-110" />
-                <span className="font-medium">حصة جديدة</span>
-              </div>
-            </button>
 
             {/* Confirmation Modal */}
             {showConfirmation && (
