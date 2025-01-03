@@ -508,7 +508,11 @@ const WeeklyMessageGenerator = () => {
             عذراً، لا يمكن عرض الصفحة. يرجى التأكد من صحة الرابط أو العودة إلى صفحة إنشاء الرابط.
           </p>
           <a
-            href="/linkcreator"
+            href={
+              window.location.href
+                .split('?')[0]
+                .replace(/\/+$/, '') + '/linkcreator'
+            }
             className="inline-flex items-center justify-center px-6 py-3 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
           >
             العودة إلى صفحة إنشاء الرابط
@@ -540,7 +544,11 @@ const WeeklyMessageGenerator = () => {
             عذراً، لا يمكن عرض الصفحة. يرجى التأكد من صحة الرابط أو العودة إلى صفحة إنشاء الرابط.
           </p>
           <a
-            href="/linkcreator"
+            href={
+              window.location.href
+                .split('?')[0]
+                .replace(/\/+$/, '') + '/linkcreator'
+            }
             className="inline-flex items-center justify-center px-6 py-3 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
           >
             العودة إلى صفحة إنشاء الرابط

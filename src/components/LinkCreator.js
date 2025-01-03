@@ -111,7 +111,7 @@ const LinkCreator = () => {
     }
 
     // Generate the full URL - points to root instead of /weekly-message
-    const url = `${window.location.origin}?data=${encodedData}`;
+    const url = `${window.location.origin}/weekly-message-generator?data=${encodedData}`;
 
     try {
       setCopyStatus('copying');
