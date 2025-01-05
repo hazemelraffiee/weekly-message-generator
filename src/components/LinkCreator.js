@@ -69,9 +69,12 @@ export const decodeData = (encodedData) => {
 };
 
 const LinkCreator = () => {
+  const [schoolName, setSchoolName] = useState('');
   const [className, setClassName] = useState('');
   const [newStudentName, setNewStudentName] = useState('');
   const [students, setStudents] = useState([]);
+  const [newTeacherName, setNewTeacherName] = useState('');
+  const [teachers, setTeachers] = useState([]);
   const [copyStatus, setCopyStatus] = useState('initial');
   const [showNotification, setShowNotification] = useState(false);
 
@@ -92,17 +95,40 @@ const LinkCreator = () => {
     }
   }, [newStudentName]);
 
+  // Function to add a new teacher
+  const addTeacher = useCallback(() => {
+    if (newTeacherName.trim()) {
+      setTeachers(prev => {
+        if (prev.some(teacher => teacher.name === newTeacherName.trim())) {
+          return prev;
+        }
+        return [...prev, {
+          id: Date.now().toString(),
+          name: newTeacherName.trim()
+        }];
+      });
+      setNewTeacherName('');
+    }
+  }, [newTeacherName]);
+
   // Function to remove a student
   const removeStudent = useCallback((studentId) => {
     setStudents(prev => prev.filter(student => student.id !== studentId));
+  }, []);
+
+  // Function to remove a teacher
+  const removeTeacher = useCallback((teacherId) => {
+    setTeachers(prev => prev.filter(teacher => teacher.id !== teacherId));
   }, []);
 
   // Function to generate and copy the URL
   const generateAndCopyUrl = useCallback(async () => {
     // Create the data object
     const data = {
+      schoolName,
       className,
-      students: students.map(s => s.name)
+      students: students.map(s => s.name),
+      teachers: teachers.map(t => t.name)
     };
 
     // Encode the data
@@ -112,7 +138,7 @@ const LinkCreator = () => {
       return;
     }
 
-    // Generate the full URL - points to root instead of /weekly-message
+    // Generate the full URL
     const url = `${window.location.origin}/weekly-message-generator?data=${encodedData}`;
 
     try {
@@ -128,9 +154,9 @@ const LinkCreator = () => {
       console.error('Failed to copy URL:', err);
       setCopyStatus('initial');
     }
-  }, [className, students]);
+  }, [schoolName, className, students, teachers]);
 
-  const isFormValid = className.trim() && students.length > 0;
+  const isFormValid = schoolName.trim() && className.trim() && students.length > 0;
 
   return (
     <div className="container mx-auto p-4 max-w-2xl" dir="rtl">
@@ -142,6 +168,19 @@ const LinkCreator = () => {
 
         {/* Content */}
         <div className="p-6 space-y-6">
+          {/* School Name Input */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-200">
+              اسم المدرسة
+            </label>
+            <input
+              className="w-full h-10 rounded-md border border-gray-700 bg-gray-800/50 px-3 py-2 text-sm text-gray-100"
+              value={schoolName}
+              onChange={(e) => setSchoolName(e.target.value)}
+              placeholder="أدخل اسم المدرسة"
+            />
+          </div>
+
           {/* Class Name Input */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-200">
@@ -193,6 +232,54 @@ const LinkCreator = () => {
                     <span className="text-gray-100">{student.name}</span>
                     <button
                       onClick={() => removeStudent(student.id)}
+                      className="text-red-500 hover:text-red-400 p-1"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Teachers Section */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-200">
+              المعلمون
+            </label>
+            <div className="flex gap-2">
+              <input
+                className="flex-1 h-10 rounded-md border border-gray-700 bg-gray-800/50 px-3 py-2 text-sm text-gray-100"
+                value={newTeacherName}
+                onChange={(e) => setNewTeacherName(e.target.value)}
+                placeholder="اسم المعلم"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addTeacher();
+                  }
+                }}
+              />
+              <button
+                onClick={addTeacher}
+                className="inline-flex items-center justify-center rounded-md text-sm font-medium h-10 px-4 py-2 bg-blue-600 hover:bg-blue-700 transition-colors text-white"
+              >
+                <Plus className="h-4 w-4 inline-block ml-2" />
+                إضافة
+              </button>
+            </div>
+
+            {/* Teachers List */}
+            {teachers.length > 0 && (
+              <div className="border border-gray-700 rounded-lg p-4 space-y-2 mt-4">
+                {teachers.map((teacher) => (
+                  <div
+                    key={teacher.id}
+                    className="flex items-center justify-between p-2 bg-gray-700/50 rounded"
+                  >
+                    <span className="text-gray-100">{teacher.name}</span>
+                    <button
+                      onClick={() => removeTeacher(teacher.id)}
                       className="text-red-500 hover:text-red-400 p-1"
                     >
                       <Trash2 className="h-4 w-4" />

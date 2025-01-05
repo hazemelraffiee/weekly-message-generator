@@ -71,8 +71,10 @@ const WeeklyMessageGenerator = () => {
   // 1. First, all useState hooks
 
   const [coreData, setCoreData] = useState({
+    schoolName: '',
     className: '',
-    students: []
+    students: [],
+    teachers: []
   });
   const [isMounted, setIsMounted] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
@@ -148,7 +150,6 @@ const WeeklyMessageGenerator = () => {
 
     // Reset all states
     setReportDate(new Date().toISOString().split('T')[0]);
-    setFormattedDate(''); // This was missing
     setAttendance({});
     setHomework({
       general: {
@@ -436,14 +437,18 @@ const WeeklyMessageGenerator = () => {
     message += '🤲 نشكر لكم متابعتكم المستمرة ودعمكم لأبنائكم\n';
     message += 'جزاكم الله خيراً على تعاونكم معنا\n\n';
 
-    // Parent engagement note
-    message += '📱 نرحب دائماً باستفساراتكم وملاحظاتكم';
+    if (coreData.teachers && coreData.teachers.length > 0) {
+      message += '\n👨‍🏫 *المعلمون:*\n';
+      message += coreData.teachers.map(teacher => `• ${teacher}`).join('\n');
+      message += '\n\n';
+    }
 
     return message;
   }, [
     coreData.className,
     formattedDate,
     coreData.students,
+    coreData.teachers,
     sections,
     getAttendanceMessage,
     getHomeworkMessage
@@ -468,31 +473,6 @@ const WeeklyMessageGenerator = () => {
       });
   }, [generateMessage]);
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const params = new URLSearchParams(window.location.search);
-    const encodedData = params.get('data');
-
-    if (encodedData) {
-      try {
-        const decodedData = decodeData(encodedData);
-        if (decodedData && decodedData.className && Array.isArray(decodedData.students)) {
-          setCoreData({
-            className: decodedData.className,
-            students: decodedData.students.map(name => ({
-              id: generateStudentId(name),
-              name: name
-            }))
-          });
-        }
-      } catch (error) {
-        console.error('Error decoding data:', error);
-      }
-    }
-    setIsLoading(false);
-  }, []);
-
   // Effect to decode and validate data parameter
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -505,18 +485,20 @@ const WeeklyMessageGenerator = () => {
         const decodedData = decodeData(encodedData);
         if (decodedData && decodedData.className && Array.isArray(decodedData.students)) {
           setCoreData({
+            schoolName: decodedData.schoolName || '',
             className: decodedData.className,
             students: decodedData.students.map(name => ({
               id: generateStudentId(name),
               name: name
-            }))
+            })),
+            teachers: decodedData.teachers || []
           });
         }
       } catch (error) {
         console.error('Error decoding data:', error);
-        // Show error UI
       }
     }
+    setIsLoading(false);
   }, []); // Empty dependency array since this should only run once
 
   useEffect(() => {
@@ -643,25 +625,76 @@ const WeeklyMessageGenerator = () => {
     return (
       <div className="container mx-auto p-4 max-w-4xl text-gray-100" dir="rtl">
         {/* Header */}
-        <div className="relative">
-          {/* Header with gradient */}
-          <div className="relative overflow-hidden rounded-lg bg-gradient-to-r from-blue-600 to-blue-800 p-8">
+        <div className="relative mb-8">
+          {/* Main Header Container */}
+          <div className="relative overflow-hidden rounded-lg bg-gradient-to-r from-blue-600 to-blue-800">
+            {/* Background Pattern */}
             <div className="absolute inset-0 bg-grid-white/10" />
-            <div className="relative">
-              <div className="flex items-center gap-4">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm">
-                  <GraduationCap className="h-8 w-8 text-white" />
+
+            {/* Content Container */}
+            <div className="relative p-6 md:p-8">
+              {/* Main Information Section */}
+              <div className="flex flex-col md:flex-row items-start gap-6">
+                {/* Icon and Primary Info */}
+                <div className="flex items-start gap-4 w-full md:w-1/2">
+                  {/* Icon Container - Made slightly smaller on mobile */}
+                  <div className="flex h-14 w-14 md:h-16 md:w-16 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm flex-shrink-0">
+                    <GraduationCap className="h-7 w-7 md:h-8 md:w-8 text-white" />
+                  </div>
+
+                  {/* Primary Information Stack */}
+                  <div className="flex-1 min-w-0">
+                    {/* School Name - Smaller and less prominent */}
+                    <div className="text-sm md:text-base text-gray-300 mb-1">
+                      {coreData.schoolName}
+                    </div>
+
+                    {/* Class Name - Larger and more prominent */}
+                    <h1 className="text-2xl md:text-3xl font-bold text-white truncate">
+                      {coreData.className}
+                    </h1>
+
+                    {/* Student Count - Moved under class name */}
+                    <div className="mt-2 text-sm md:text-base text-gray-200">
+                      {coreData.students.length} طلاب
+                    </div>
+                  </div>
                 </div>
-                <h1 className="text-2xl font-bold text-white">{coreData.className}</h1>
+
+                {/* Teachers Section - Responsive layout */}
+                <div className="w-full md:w-1/2 mt-4 md:mt-0">
+                  <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <GraduationCap className="h-5 w-5 text-blue-200 mt-1 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm text-gray-300 mb-2">المعلمون</div>
+                        {coreData.teachers && coreData.teachers.length > 0 ? (
+                          <div className="flex flex-wrap gap-2">
+                            {coreData.teachers.map((teacher, index) => (
+                              <span
+                                key={index}
+                                className="inline-flex items-center rounded-full bg-white/20 px-3 py-1 text-sm text-white"
+                              >
+                                {teacher}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 text-sm">لم يتم تحديد المعلمين</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* New Session Button Container */}
-          <div className="mt-4 mb-8 md:mb-[28px] md:mt-[-60px] px-4 md:px-0 md:absolute md:left-8">
+          {/* New Session Button - Adjusted positioning */}
+          <div className="mt-4 mb-8 md:mb-0 md:mt-[-28px] px-4 md:px-0 md:absolute md:left-8">
             <button
               onClick={() => setShowConfirmation(true)}
-              className="w-full md:w-auto inline-flex items-center justify-center rounded-md text-sm font-medium h-12 px-6 bg-amber-600 hover:bg-amber-700 transition-colors text-white backdrop-blur-sm group shadow-lg"
+              className="w-full md:w-auto inline-flex items-center justify-center rounded-md text-sm font-medium h-11 px-5 bg-amber-600 hover:bg-amber-700 transition-colors text-white backdrop-blur-sm group shadow-lg"
             >
               <div className="flex items-center gap-2">
                 <PenLine className="h-5 w-5 transition-transform group-hover:scale-110" />
