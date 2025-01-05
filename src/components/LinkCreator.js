@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Plus, Trash2, Link2, Check, Loader2 } from 'lucide-react';
 
 // Utility function to convert string to UTF-8 bytes
@@ -48,17 +48,17 @@ export const decodeData = (encodedData) => {
     const base64 = encodedData
       .replace(/-/g, '+')
       .replace(/_/g, '/');
-    
+
     // Pad the base64 string if needed
     const paddedBase64 = base64 + '=='.slice(0, (4 - base64.length % 4) % 4);
-    
+
     // Convert base64 to bytes
     const binary = atob(paddedBase64);
     const bytes = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) {
       bytes[i] = binary.charCodeAt(i);
     }
-    
+
     // Convert bytes back to string and parse JSON
     const jsonString = utf8BytesToString(bytes);
     return JSON.parse(jsonString);
@@ -68,15 +68,50 @@ export const decodeData = (encodedData) => {
   }
 };
 
+const useLocalStorage = (key, initialValue) => {
+  const [state, setState] = useState(() => {
+    if (typeof window === 'undefined') return initialValue;
+
+    try {
+      const item = localStorage.getItem(`linkCreator_${key}`);
+      return item ? JSON.parse(item) : initialValue;
+    } catch (error) {
+      console.error(`Error loading ${key} from localStorage:`, error);
+      return initialValue;
+    }
+  });
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    try {
+      localStorage.setItem(`linkCreator_${key}`, JSON.stringify(state));
+    } catch (error) {
+      console.error(`Error saving ${key} to localStorage:`, error);
+    }
+  }, [key, state]);
+
+  return [state, setState];
+};
+
 const LinkCreator = () => {
-  const [schoolName, setSchoolName] = useState('');
-  const [className, setClassName] = useState('');
+  const [schoolName, setSchoolName] = useLocalStorage('schoolName', '');
+  const [className, setClassName] = useLocalStorage('className', '');
+
   const [newStudentName, setNewStudentName] = useState('');
   const [students, setStudents] = useState([]);
   const [newTeacherName, setNewTeacherName] = useState('');
   const [teachers, setTeachers] = useState([]);
   const [copyStatus, setCopyStatus] = useState('initial');
   const [showNotification, setShowNotification] = useState(false);
+
+  const clearFormData = useCallback(() => {
+    // Clear everything except school name and class name
+    setNewStudentName('');
+    setStudents([]);
+    setNewTeacherName('');
+    setTeachers([]);
+  }, []);
 
   // Function to add a new student
   const addStudent = useCallback(() => {
@@ -123,29 +158,30 @@ const LinkCreator = () => {
 
   // Function to generate and copy the URL
   const generateAndCopyUrl = useCallback(async () => {
-    // Create the data object
     const data = {
       schoolName,
       className,
       students: students.map(s => s.name),
       teachers: teachers.map(t => t.name)
     };
-
-    // Encode the data
+  
     const encodedData = encodeData(data);
     if (!encodedData) {
       console.error('Failed to encode data');
       return;
     }
-
-    // Generate the full URL
+  
     const url = `${window.location.origin}/weekly-message-generator?data=${encodedData}`;
-
+  
     try {
       setCopyStatus('copying');
       await navigator.clipboard.writeText(url);
       setCopyStatus('copied');
       setShowNotification(true);
+      
+      // Clear only the form data, keeping school and class name
+      clearFormData();
+      
       setTimeout(() => {
         setCopyStatus('initial');
         setShowNotification(false);
@@ -154,7 +190,7 @@ const LinkCreator = () => {
       console.error('Failed to copy URL:', err);
       setCopyStatus('initial');
     }
-  }, [schoolName, className, students, teachers]);
+  }, [schoolName, className, students, teachers, clearFormData]);
 
   const isFormValid = schoolName.trim() && className.trim() && students.length > 0;
 
@@ -192,54 +228,6 @@ const LinkCreator = () => {
               onChange={(e) => setClassName(e.target.value)}
               placeholder="أدخل اسم الفصل"
             />
-          </div>
-
-          {/* Students Section */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-200">
-              الطلاب
-            </label>
-            <div className="flex gap-2">
-              <input
-                className="flex-1 h-10 rounded-md border border-gray-700 bg-gray-800/50 px-3 py-2 text-sm text-gray-100"
-                value={newStudentName}
-                onChange={(e) => setNewStudentName(e.target.value)}
-                placeholder="اسم الطالب"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    addStudent();
-                  }
-                }}
-              />
-              <button
-                onClick={addStudent}
-                className="inline-flex items-center justify-center rounded-md text-sm font-medium h-10 px-4 py-2 bg-blue-600 hover:bg-blue-700 transition-colors text-white"
-              >
-                <Plus className="h-4 w-4 inline-block ml-2" />
-                إضافة
-              </button>
-            </div>
-
-            {/* Students List */}
-            {students.length > 0 && (
-              <div className="border border-gray-700 rounded-lg p-4 space-y-2 mt-4">
-                {students.map((student) => (
-                  <div
-                    key={student.id}
-                    className="flex items-center justify-between p-2 bg-gray-700/50 rounded"
-                  >
-                    <span className="text-gray-100">{student.name}</span>
-                    <button
-                      onClick={() => removeStudent(student.id)}
-                      className="text-red-500 hover:text-red-400 p-1"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
 
           {/* Teachers Section */}
@@ -280,6 +268,54 @@ const LinkCreator = () => {
                     <span className="text-gray-100">{teacher.name}</span>
                     <button
                       onClick={() => removeTeacher(teacher.id)}
+                      className="text-red-500 hover:text-red-400 p-1"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Students Section */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-200">
+              الطلاب
+            </label>
+            <div className="flex gap-2">
+              <input
+                className="flex-1 h-10 rounded-md border border-gray-700 bg-gray-800/50 px-3 py-2 text-sm text-gray-100"
+                value={newStudentName}
+                onChange={(e) => setNewStudentName(e.target.value)}
+                placeholder="اسم الطالب"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addStudent();
+                  }
+                }}
+              />
+              <button
+                onClick={addStudent}
+                className="inline-flex items-center justify-center rounded-md text-sm font-medium h-10 px-4 py-2 bg-blue-600 hover:bg-blue-700 transition-colors text-white"
+              >
+                <Plus className="h-4 w-4 inline-block ml-2" />
+                إضافة
+              </button>
+            </div>
+
+            {/* Students List */}
+            {students.length > 0 && (
+              <div className="border border-gray-700 rounded-lg p-4 space-y-2 mt-4">
+                {students.map((student) => (
+                  <div
+                    key={student.id}
+                    className="flex items-center justify-between p-2 bg-gray-700/50 rounded"
+                  >
+                    <span className="text-gray-100">{student.name}</span>
+                    <button
+                      onClick={() => removeStudent(student.id)}
                       className="text-red-500 hover:text-red-400 p-1"
                     >
                       <Trash2 className="h-4 w-4" />
