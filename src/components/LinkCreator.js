@@ -1,9 +1,37 @@
 'use client';
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { Plus, Trash2, Link2, Check, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Link2, Check, Loader2, Upload, X } from 'lucide-react';
 
-// Utility function to convert string to UTF-8 bytes
+// Custom hook for localStorage
+const useLocalStorage = (key, initialValue) => {
+  const [storedValue, setStoredValue] = useState(initialValue);
+
+  useEffect(() => {
+    try {
+      const item = localStorage.getItem(`linkCreator_${key}`);
+      if (item) {
+        setStoredValue(JSON.parse(item));
+      }
+    } catch (error) {
+      console.error(`Error loading ${key} from localStorage:`, error);
+    }
+  }, [key]);
+
+  const setValue = useCallback((value) => {
+    try {
+      const valueToStore = value instanceof Function ? value(storedValue) : value;
+      setStoredValue(valueToStore);
+      localStorage.setItem(`linkCreator_${key}`, JSON.stringify(valueToStore));
+    } catch (error) {
+      console.error(`Error saving ${key} to localStorage:`, error);
+    }
+  }, [key, storedValue]);
+
+  return [storedValue, setValue];
+};
+
+// Utility functions remain the same
 const stringToUtf8Bytes = (str) => {
   const utf8 = unescape(encodeURIComponent(str));
   const bytes = new Uint8Array(utf8.length);
@@ -13,27 +41,19 @@ const stringToUtf8Bytes = (str) => {
   return bytes;
 };
 
-// Utility function to convert UTF-8 bytes back to string
 const utf8BytesToString = (bytes) => {
   const utf8 = String.fromCharCode.apply(null, bytes);
   return decodeURIComponent(escape(utf8));
 };
 
-// Utility function to compress and encode data
 const encodeData = (data) => {
   try {
-    // Convert the data object to a JSON string
     const jsonString = JSON.stringify(data);
-
-    // Convert string to UTF-8 bytes
     const bytes = stringToUtf8Bytes(jsonString);
-
-    // Convert bytes to base64 and make it URL-safe
     const base64 = btoa(String.fromCharCode.apply(null, bytes))
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
       .replace(/=+$/, '');
-
     return base64;
   } catch (error) {
     console.error('Error encoding data:', error);
@@ -41,25 +61,22 @@ const encodeData = (data) => {
   }
 };
 
-// Utility function to decode data
 export const decodeData = (encodedData) => {
   try {
-    // Make the base64 URL-safe string back to regular base64
-    const base64 = encodedData
+    // Extract the data parameter from the URL if a full URL is pasted
+    const dataParam = encodedData.includes('?data=')
+      ? encodedData.split('?data=')[1]
+      : encodedData;
+
+    const base64 = dataParam
       .replace(/-/g, '+')
       .replace(/_/g, '/');
-
-    // Pad the base64 string if needed
     const paddedBase64 = base64 + '=='.slice(0, (4 - base64.length % 4) % 4);
-
-    // Convert base64 to bytes
     const binary = atob(paddedBase64);
     const bytes = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) {
       bytes[i] = binary.charCodeAt(i);
     }
-
-    // Convert bytes back to string and parse JSON
     const jsonString = utf8BytesToString(bytes);
     return JSON.parse(jsonString);
   } catch (error) {
@@ -68,56 +85,125 @@ export const decodeData = (encodedData) => {
   }
 };
 
-const useLocalStorage = (key, initialValue) => {
-  const [state, setState] = useState(() => {
-    if (typeof window === 'undefined') return initialValue;
+// Custom Modal Component
+const Modal = ({ isOpen, onClose, children }) => {
+  if (!isOpen) return null;
 
-    try {
-      const item = localStorage.getItem(`linkCreator_${key}`);
-      return item ? JSON.parse(item) : initialValue;
-    } catch (error) {
-      console.error(`Error loading ${key} from localStorage:`, error);
-      return initialValue;
+  // Close modal when clicking outside
+  const handleBackdropClick = (e) => {
+    if (e.target === e.currentTarget) {
+      onClose();
     }
-  });
+  };
 
+  // Handle escape key press
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
 
-    try {
-      localStorage.setItem(`linkCreator_${key}`, JSON.stringify(state));
-    } catch (error) {
-      console.error(`Error saving ${key} to localStorage:`, error);
+    if (isOpen) {
+      document.addEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'hidden';
     }
-  }, [key, state]);
 
-  return [state, setState];
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen, onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      onClick={handleBackdropClick}
+    >
+      <div
+        className="bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4 relative"
+        role="dialog"
+        aria-modal="true"
+      >
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-gray-400 hover:text-white"
+          aria-label="Close dialog"
+        >
+          <X className="h-5 w-5" />
+        </button>
+        {children}
+      </div>
+    </div>
+  );
 };
 
 const LinkCreator = () => {
+  // State management
   const [schoolName, setSchoolName] = useLocalStorage('schoolName', '');
   const [className, setClassName] = useLocalStorage('className', '');
-
   const [newStudentName, setNewStudentName] = useState('');
   const [students, setStudents] = useState([]);
   const [newTeacherName, setNewTeacherName] = useState('');
   const [teachers, setTeachers] = useState([]);
   const [copyStatus, setCopyStatus] = useState('initial');
-  const [showNotification, setShowNotification] = useState(false);
 
-  const clearFormData = useCallback(() => {
-    // Clear everything except school name and class name
-    setNewStudentName('');
+  // Modal and link loading states
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [linkInput, setLinkInput] = useState('');
+  const [loadingLink, setLoadingLink] = useState(false);
+  const [error, setError] = useState('');
+  const [notification, setNotification] = useState(null);
+
+  // Show notification helper
+  const showNotification = (message, type = 'success') => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 3000);
+  };
+
+  // Handle loading existing link
+  const handleLoadLink = useCallback(async () => {
+    setLoadingLink(true);
+    setError('');
+
+    try {
+      const decodedData = decodeData(linkInput);
+
+      if (!decodedData) {
+        throw new Error('الرابط غير صالح');
+      }
+
+      setSchoolName(decodedData.schoolName || '');
+      setClassName(decodedData.className || '');
+      setStudents(decodedData.students.map((name, index) => ({
+        id: `existing-${index}`,
+        name
+      })));
+      setTeachers(decodedData.teachers.map((name, index) => ({
+        id: `existing-${index}`,
+        name
+      })));
+
+      setIsModalOpen(false);
+      setLinkInput('');
+      showNotification('تم تحميل البيانات بنجاح');
+    } catch (error) {
+      setError('حدث خطأ أثناء تحميل البيانات. يرجى التحقق من الرابط والمحاولة مرة أخرى.');
+    } finally {
+      setLoadingLink(false);
+    }
+  }, [linkInput, setSchoolName, setClassName, showNotification]);
+
+  const clearLists = useCallback(() => {
     setStudents([]);
-    setNewTeacherName('');
     setTeachers([]);
-  }, []);
+    showNotification('تم مسح قوائم الطلاب والمعلمين');
+  }, [showNotification]);
 
   // Function to add a new student
   const addStudent = useCallback(() => {
     if (newStudentName.trim()) {
       setStudents(prev => {
-        // Check if student already exists
         if (prev.some(student => student.name === newStudentName.trim())) {
           return prev;
         }
@@ -164,39 +250,61 @@ const LinkCreator = () => {
       students: students.map(s => s.name),
       teachers: teachers.map(t => t.name)
     };
-  
+
     const encodedData = encodeData(data);
     if (!encodedData) {
       console.error('Failed to encode data');
       return;
     }
-  
+
     const url = `${window.location.origin}/weekly-message-generator?data=${encodedData}`;
-  
+
     try {
       setCopyStatus('copying');
       await navigator.clipboard.writeText(url);
       setCopyStatus('copied');
-      setShowNotification(true);
-      
-      // Clear only the form data, keeping school and class name
-      clearFormData();
-      
+      showNotification('تم نسخ الرابط بنجاح');
+
       setTimeout(() => {
         setCopyStatus('initial');
-        setShowNotification(false);
       }, 2000);
     } catch (err) {
       console.error('Failed to copy URL:', err);
       setCopyStatus('initial');
+      showNotification('حدث خطأ أثناء نسخ الرابط', 'error');
     }
-  }, [schoolName, className, students, teachers, clearFormData]);
+  }, [schoolName, className, students, teachers]);
 
+  // Form validation
   const isFormValid = schoolName.trim() && className.trim() && students.length > 0;
+
+  useEffect(() => {
+    // Initialize students and teachers with empty arrays on mount
+    setStudents([]);
+    setTeachers([]);
+  }, []);
 
   return (
     <div className="container mx-auto p-4 max-w-2xl" dir="rtl">
-      <div className="bg-gray-800 border border-gray-700 rounded-lg shadow-lg overflow-hidden">
+      <div className="bg-gray-800 border border-gray-700 rounded-lg shadow-lg overflow-hidden relative">
+        {/* Floating Action Buttons */}
+        <div className="absolute left-6 top-6 flex gap-2">
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="p-3 bg-blue-600 hover:bg-blue-700 rounded-full shadow-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-800"
+            aria-label="تحميل رابط موجود"
+          >
+            <Upload className="h-5 w-5 text-white" />
+          </button>
+          <button
+            onClick={clearLists}
+            className="p-3 bg-red-600 hover:bg-red-700 rounded-full shadow-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-gray-800"
+            aria-label="مسح القوائم"
+          >
+            <Trash2 className="h-5 w-5 text-white" />
+          </button>
+        </div>
+
         {/* Header */}
         <div className="p-6 border-b border-gray-700">
           <h1 className="text-xl font-semibold text-gray-100">إنشاء رابط لفصل جديد</h1>
@@ -328,36 +436,20 @@ const LinkCreator = () => {
 
           {/* Generate Link Button */}
           <div className="relative pt-4">
-            {/* Success Notification */}
-            <div
-              className={`
-                absolute -top-2 left-1/2 transform -translate-x-1/2 -translate-y-full
-                transition-opacity duration-200
-                ${copyStatus === 'copied' ? 'opacity-100' : 'opacity-0'}
-              `}
-            >
-              <div className="bg-green-600 text-white px-4 py-2 rounded-md shadow-lg text-sm whitespace-nowrap">
-                <div className="flex items-center gap-2">
-                  <Check className="h-4 w-4" />
-                  <span>تم نسخ الرابط بنجاح</span>
-                </div>
-              </div>
-            </div>
-
             <button
               onClick={generateAndCopyUrl}
               disabled={!isFormValid || copyStatus === 'copying'}
               className={`
-                w-full inline-flex items-center justify-center 
-                rounded-md text-sm font-medium h-12 px-6 py-2 
-                transition-colors duration-200 text-white
-                ${!isFormValid
+        w-full inline-flex items-center justify-center 
+        rounded-md text-sm font-medium h-12 px-6 py-2 
+        transition-colors duration-200 text-white
+        ${!isFormValid
                   ? 'bg-gray-600 cursor-not-allowed'
                   : copyStatus === 'copied'
                     ? 'bg-green-600 hover:bg-green-700'
                     : 'bg-blue-600 hover:bg-blue-700'
                 }
-              `}
+      `}
             >
               <div className="flex items-center gap-2">
                 {copyStatus === 'copying' ? (
@@ -380,6 +472,74 @@ const LinkCreator = () => {
           </div>
         </div>
       </div>
+
+      {/* Custom Modal */}
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-100">تحميل رابط موجود</h2>
+            <p className="text-gray-400 mt-1">قم بلصق الرابط الموجود لتحميل البيانات وتعديلها</p>
+          </div>
+
+          <div className="space-y-4">
+            <textarea
+              value={linkInput}
+              onChange={(e) => setLinkInput(e.target.value)}
+              placeholder="الصق الرابط هنا..."
+              className="w-full h-24 rounded-md border border-gray-700 bg-gray-800/50 px-3 py-2 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+
+            {error && (
+              <div className="bg-red-900/50 border border-red-700 text-red-200 px-4 py-2 rounded-md">
+                {error}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="px-4 py-2 rounded-md border border-gray-600 text-gray-300 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500"
+              >
+                إلغاء
+              </button>
+              <button
+                onClick={handleLoadLink}
+                disabled={!linkInput.trim() || loadingLink}
+                className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {loadingLink ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    جاري التحميل...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4" />
+                    تحميل
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Notification */}
+      {notification && (
+        <div
+          className={`fixed bottom-4 left-1/2 transform -translate-x-1/2 px-4 py-2 rounded-md shadow-lg text-white ${notification.type === 'success' ? 'bg-green-600' : 'bg-red-600'
+            }`}
+        >
+          <div className="flex items-center gap-2">
+            {notification.type === 'success' ? (
+              <Check className="h-4 w-4" />
+            ) : (
+              <X className="h-4 w-4" />
+            )}
+            <span>{notification.message}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
