@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { Plus, Trash2, Link2, Check, Loader2, Upload, X } from 'lucide-react';
+import { Plus, Trash2, Link2, Check, Loader2, Upload, X, Pencil } from 'lucide-react';
 
 // Custom hook for localStorage
 const useLocalStorage = (key, initialValue) => {
@@ -285,128 +285,137 @@ const LinkCreator = () => {
   }, []);
 
   return (
-    <div className="container mx-auto p-4 max-w-2xl" dir="rtl">
-      <div className="bg-gray-800 border border-gray-700 rounded-lg shadow-lg overflow-hidden relative">
-        {/* Floating Action Buttons */}
-        <div className="absolute left-6 top-6 flex gap-2">
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="p-3 bg-blue-600 hover:bg-blue-700 rounded-full shadow-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-800"
-            aria-label="تحميل رابط موجود"
-          >
-            <Upload className="h-5 w-5 text-white" />
-          </button>
-          <button
-            onClick={clearLists}
-            className="p-3 bg-red-600 hover:bg-red-700 rounded-full shadow-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-gray-800"
-            aria-label="مسح القوائم"
-          >
-            <Trash2 className="h-5 w-5 text-white" />
-          </button>
-        </div>
-
-        {/* Header */}
-        <div className="p-6 border-b border-gray-700">
-          <h1 className="text-xl font-semibold text-gray-100">إنشاء رابط لفصل جديد</h1>
-        </div>
-
-        {/* Content */}
-        <div className="p-6 space-y-6">
-          {/* School Name Input */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-200">
-              اسم المدرسة
-            </label>
-            <input
-              className="w-full h-10 rounded-md border border-gray-700 bg-gray-800/50 px-3 py-2 text-sm text-gray-100"
-              value={schoolName}
-              onChange={(e) => setSchoolName(e.target.value)}
-              placeholder="أدخل اسم المدرسة"
-            />
-          </div>
-
-          {/* Class Name Input */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-200">
-              اسم الفصل
-            </label>
-            <input
-              className="w-full h-10 rounded-md border border-gray-700 bg-gray-800/50 px-3 py-2 text-sm text-gray-100"
-              value={className}
-              onChange={(e) => setClassName(e.target.value)}
-              placeholder="أدخل اسم الفصل"
-            />
-          </div>
-
-          {/* Teachers Section */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-200">
-              المعلمون
-            </label>
-            <div className="flex gap-2">
-              <input
-                className="flex-1 h-10 rounded-md border border-gray-700 bg-gray-800/50 px-3 py-2 text-sm text-gray-100"
-                value={newTeacherName}
-                onChange={(e) => setNewTeacherName(e.target.value)}
-                placeholder="اسم المعلم"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    addTeacher();
-                  }
-                }}
-              />
+    <div className="min-h-screen bg-gray-900 py-8" dir="rtl">
+      <div className="max-w-7xl mx-auto px-4">
+        {/* Header Section - Contains primary actions */}
+        <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 mb-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <h1 className="text-xl font-semibold text-gray-100">إنشاء رابط لفصل جديد</h1>
+            <div className="flex gap-3 w-full sm:w-auto">
               <button
-                onClick={addTeacher}
-                className="inline-flex items-center justify-center rounded-md text-sm font-medium h-10 px-4 py-2 bg-blue-600 hover:bg-blue-700 transition-colors text-white"
+                onClick={() => setIsModalOpen(true)}
+                className="flex-1 sm:flex-initial inline-flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
               >
-                <Plus className="h-4 w-4 inline-block ml-2" />
-                إضافة
+                <Upload className="h-4 w-4 inline-block ml-2" />
+                تحميل رابط
+              </button>
+              <button
+                onClick={clearLists}
+                className="flex-1 sm:flex-initial inline-flex items-center justify-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors"
+              >
+                <Trash2 className="h-4 w-4 inline-block ml-2" />
+                مسح القوائم
               </button>
             </div>
+          </div>
+        </div>
 
-            {/* Teachers List */}
-            {teachers.length > 0 && (
-              <div className="border border-gray-700 rounded-lg p-4 space-y-2 mt-4">
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-24">
+          {/* Left Column - School Info and Teachers */}
+          <div className="space-y-6">
+            {/* School Information Card */}
+            <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+              <h2 className="text-xl font-semibold text-gray-100 mb-6">معلومات المدرسة</h2>
+
+              <div className="space-y-4">
+                {/* School Name Input */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-200">اسم المدرسة</label>
+                  <input
+                    className="w-full h-10 rounded-md border border-gray-700 bg-gray-800/50 px-3 py-2 text-sm text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    value={schoolName}
+                    onChange={(e) => setSchoolName(e.target.value)}
+                    placeholder="أدخل اسم المدرسة"
+                  />
+                </div>
+
+                {/* Class Name Input */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-200">اسم الفصل</label>
+                  <input
+                    className="w-full h-10 rounded-md border border-gray-700 bg-gray-800/50 px-3 py-2 text-sm text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    value={className}
+                    onChange={(e) => setClassName(e.target.value)}
+                    placeholder="أدخل اسم الفصل"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Teachers Card */}
+            <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+              <h2 className="text-xl font-semibold text-gray-100 mb-6">المعلمون</h2>
+
+              {/* Add Teacher Input */}
+              <div className="flex gap-2 mb-4">
+                <input
+                  className="flex-1 h-10 rounded-md border border-gray-700 bg-gray-800/50 px-3 py-2 text-sm text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  value={newTeacherName}
+                  onChange={(e) => setNewTeacherName(e.target.value)}
+                  placeholder="اسم المعلم"
+                  onKeyDown={(e) => e.key === 'Enter' && addTeacher()}
+                />
+                <button
+                  onClick={addTeacher}
+                  className="inline-flex items-center justify-center rounded-md h-10 px-4 bg-blue-600 hover:bg-blue-700 transition-colors text-white"
+                >
+                  <Plus className="h-4 w-4 inline-block ml-2" />
+                  إضافة
+                </button>
+              </div>
+
+              {/* Teachers List */}
+              <div className="space-y-2 max-h-[300px] overflow-y-auto">
                 {teachers.map((teacher) => (
                   <div
                     key={teacher.id}
-                    className="flex items-center justify-between p-2 bg-gray-700/50 rounded"
+                    className="flex items-center justify-between p-2 bg-gray-700/50 rounded hover:bg-gray-700 transition-colors"
                   >
                     <span className="text-gray-100">{teacher.name}</span>
-                    <button
-                      onClick={() => removeTeacher(teacher.id)}
-                      className="text-red-500 hover:text-red-400 p-1"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => {
+                          const newName = window.prompt('تعديل اسم المعلم', teacher.name);
+                          if (newName?.trim()) {
+                            setTeachers(prev => prev.map(t =>
+                              t.id === teacher.id ? { ...t, name: newName.trim() } : t
+                            ));
+                          }
+                        }}
+                        className="text-blue-500 hover:text-blue-400 p-1"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => removeTeacher(teacher.id)}
+                        className="text-red-500 hover:text-red-400 p-1"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
-            )}
+            </div>
           </div>
 
-          {/* Students Section */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-200">
-              الطلاب
-            </label>
-            <div className="flex gap-2">
+          {/* Right Column - Students */}
+          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+            <h2 className="text-xl font-semibold text-gray-100 mb-6">الطلاب</h2>
+
+            {/* Add Student Input */}
+            <div className="flex gap-2 mb-4">
               <input
-                className="flex-1 h-10 rounded-md border border-gray-700 bg-gray-800/50 px-3 py-2 text-sm text-gray-100"
+                className="flex-1 h-10 rounded-md border border-gray-700 bg-gray-800/50 px-3 py-2 text-sm text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 value={newStudentName}
                 onChange={(e) => setNewStudentName(e.target.value)}
                 placeholder="اسم الطالب"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    addStudent();
-                  }
-                }}
+                onKeyDown={(e) => e.key === 'Enter' && addStudent()}
               />
               <button
                 onClick={addStudent}
-                className="inline-flex items-center justify-center rounded-md text-sm font-medium h-10 px-4 py-2 bg-blue-600 hover:bg-blue-700 transition-colors text-white"
+                className="inline-flex items-center justify-center rounded-md h-10 px-4 bg-blue-600 hover:bg-blue-700 transition-colors text-white"
               >
                 <Plus className="h-4 w-4 inline-block ml-2" />
                 إضافة
@@ -414,14 +423,27 @@ const LinkCreator = () => {
             </div>
 
             {/* Students List */}
-            {students.length > 0 && (
-              <div className="border border-gray-700 rounded-lg p-4 space-y-2 mt-4">
-                {students.map((student) => (
-                  <div
-                    key={student.id}
-                    className="flex items-center justify-between p-2 bg-gray-700/50 rounded"
-                  >
-                    <span className="text-gray-100">{student.name}</span>
+            <div className="space-y-2 max-h-[calc(100vh-24rem)] overflow-y-auto">
+              {students.map((student) => (
+                <div
+                  key={student.id}
+                  className="flex items-center justify-between p-2 bg-gray-700/50 rounded hover:bg-gray-700 transition-colors"
+                >
+                  <span className="text-gray-100">{student.name}</span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => {
+                        const newName = window.prompt('تعديل اسم الطالب', student.name);
+                        if (newName?.trim()) {
+                          setStudents(prev => prev.map(s =>
+                            s.id === student.id ? { ...s, name: newName.trim() } : s
+                          ));
+                        }
+                      }}
+                      className="text-blue-500 hover:text-blue-400 p-1"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
                     <button
                       onClick={() => removeStudent(student.id)}
                       className="text-red-500 hover:text-red-400 p-1"
@@ -429,27 +451,29 @@ const LinkCreator = () => {
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
-                ))}
-              </div>
-            )}
+                </div>
+              ))}
+            </div>
           </div>
+        </div>
 
-          {/* Generate Link Button */}
-          <div className="relative pt-4">
+        {/* Generate Link Button - Sticky Footer */}
+        <div className="fixed bottom-0 left-0 right-0 bg-gray-900/80 backdrop-blur-sm p-4 border-t border-gray-800 z-20">
+          <div className="max-w-7xl mx-auto">
             <button
               onClick={generateAndCopyUrl}
               disabled={!isFormValid || copyStatus === 'copying'}
               className={`
-        w-full inline-flex items-center justify-center 
-        rounded-md text-sm font-medium h-12 px-6 py-2 
-        transition-colors duration-200 text-white
-        ${!isFormValid
+                w-full inline-flex items-center justify-center 
+                rounded-md text-sm font-medium h-12 px-6
+                transition-colors duration-200 text-white
+                ${!isFormValid
                   ? 'bg-gray-600 cursor-not-allowed'
                   : copyStatus === 'copied'
                     ? 'bg-green-600 hover:bg-green-700'
                     : 'bg-blue-600 hover:bg-blue-700'
                 }
-      `}
+              `}
             >
               <div className="flex items-center gap-2">
                 {copyStatus === 'copying' ? (
@@ -471,22 +495,20 @@ const LinkCreator = () => {
             </button>
           </div>
         </div>
-      </div>
 
-      {/* Custom Modal */}
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
-        <div className="space-y-4">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-100">تحميل رابط موجود</h2>
-            <p className="text-gray-400 mt-1">قم بلصق الرابط الموجود لتحميل البيانات وتعديلها</p>
-          </div>
-
+        {/* Modal */}
+        <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
           <div className="space-y-4">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-100">تحميل رابط موجود</h2>
+              <p className="text-gray-400 mt-1">قم بلصق الرابط الموجود لتحميل البيانات وتعديلها</p>
+            </div>
+
             <textarea
               value={linkInput}
               onChange={(e) => setLinkInput(e.target.value)}
               placeholder="الصق الرابط هنا..."
-              className="w-full h-24 rounded-md border border-gray-700 bg-gray-800/50 px-3 py-2 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full h-24 rounded-md border border-gray-700 bg-gray-800/50 px-3 py-2 text-sm text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
 
             {error && (
@@ -498,14 +520,14 @@ const LinkCreator = () => {
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="px-4 py-2 rounded-md border border-gray-600 text-gray-300 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                className="px-4 py-2 rounded-md border border-gray-600 text-gray-300 hover:bg-gray-700"
               >
                 إلغاء
               </button>
               <button
                 onClick={handleLoadLink}
                 disabled={!linkInput.trim() || loadingLink}
-                className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {loadingLink ? (
                   <>
@@ -521,25 +543,28 @@ const LinkCreator = () => {
               </button>
             </div>
           </div>
-        </div>
-      </Modal>
+        </Modal>
 
-      {/* Notification */}
-      {notification && (
-        <div
-          className={`fixed bottom-4 left-1/2 transform -translate-x-1/2 px-4 py-2 rounded-md shadow-lg text-white ${notification.type === 'success' ? 'bg-green-600' : 'bg-red-600'
-            }`}
-        >
-          <div className="flex items-center gap-2">
-            {notification.type === 'success' ? (
-              <Check className="h-4 w-4" />
-            ) : (
-              <X className="h-4 w-4" />
-            )}
-            <span>{notification.message}</span>
+        {/* Notification */}
+        {notification && (
+          <div
+            className={`
+              fixed bottom-24 left-1/2 transform -translate-x-1/2 
+              px-4 py-2 rounded-md shadow-lg text-white z-30
+              ${notification.type === 'success' ? 'bg-green-600' : 'bg-red-600'}
+            `}
+          >
+            <div className="flex items-center gap-2">
+              {notification.type === 'success' ? (
+                <Check className="h-4 w-4" />
+              ) : (
+                <X className="h-4 w-4" />
+              )}
+              <span>{notification.message}</span>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };
