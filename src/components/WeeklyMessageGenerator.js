@@ -21,6 +21,8 @@ import { decodeData } from '@/components/LinkCreator'
 
 import AttendanceCard from '@/components/AttendanceCard';
 
+import HomeworkSection, { homeworkTypes } from '@/components/HomeworkSection';
+
 const useLocalStorage = (key, initialValue) => {
   const isHydrated = useHydration();
   const [state, setState] = useState(() => {
@@ -95,8 +97,7 @@ const WeeklyMessageGenerator = () => {
     custom: { enabled: false, fields: [] }
   });
   const [homework, setHomework] = useLocalStorage('homework', {
-    general: { enabled: true, content: '' },
-    specific: { assignments: [] }
+    assignments: [] // Initialize with empty assignments array
   });
 
   const [copyStatus, setCopyStatus] = useState('initial');
@@ -147,18 +148,12 @@ const WeeklyMessageGenerator = () => {
         localStorage.removeItem(key);
       }
     });
-
+  
     // Reset all states
     setReportDate(new Date().toISOString().split('T')[0]);
     setAttendance({});
     setHomework({
-      general: {
-        enabled: true,
-        content: ''
-      },
-      specific: {
-        assignments: []
-      }
+      assignments: [] // Reset to empty assignments array
     });
     setSections({
       weekStudy: { enabled: true, fields: [] },
@@ -166,7 +161,7 @@ const WeeklyMessageGenerator = () => {
       reminders: { enabled: true, fields: [] },
       custom: { enabled: false, fields: [] }
     });
-
+  
     // Force a re-render
     setIsMounted(false);
     setTimeout(() => setIsMounted(true), 0);
@@ -349,32 +344,45 @@ const WeeklyMessageGenerator = () => {
   }, [attendance, coreData.students]);
 
   const getHomeworkMessage = useCallback(() => {
-    if (!homework.general.enabled) return '';
-    let message = '';
-
-    if (homework.general.content) {
-      message += '*الواجب العام:*\n';
-      message += `${homework.general.content}\n\n`;
+    if (!homework.assignments || homework.assignments.length === 0) {
+      return '';
     }
-
-    const validAssignments = homework.specific.assignments.filter(
-      assignment => assignment.studentIds.length > 0 && assignment.content.trim()
-    );
-
-    if (validAssignments.length > 0) {
-      message += '*واجبات خاصة:*\n';
-      validAssignments.forEach(assignment => {
-        const studentNames = assignment.studentIds
+  
+    let message = '📝 *الواجبات المنزلية*\n\n';
+    
+    // Separate assignments into general and specific
+    const generalAssignments = homework.assignments.filter(a => a.isGeneral);
+    const specificAssignments = homework.assignments.filter(a => !a.isGeneral);
+  
+    // Handle general assignments
+    if (generalAssignments.length > 0) {
+      message += '*الواجبات العامة:*\n';
+      generalAssignments.forEach(assignment => {
+        const typeLabel = homeworkTypes[assignment.type].label;
+        message += `• ${typeLabel}: ${assignment.content}\n`;
+      });
+    }
+  
+    // Handle specific assignments
+    if (specificAssignments.length > 0) {
+      if (generalAssignments.length > 0) {
+        message += '\n';
+      }
+      message += '*الواجبات الخاصة:*\n';
+      specificAssignments.forEach(assignment => {
+        const studentNames = assignment.students
           .map(id => coreData.students.find(s => s.id === id)?.name)
           .filter(Boolean)
           .join(' و ');
-        message += `🔸 *${studentNames}:*\n`;
-        message += `${assignment.content}\n\n`;
+  
+        const typeLabel = homeworkTypes[assignment.type].label;
+        message += `• *${studentNames}:*\n`;
+        message += `  ${typeLabel}: ${assignment.content}\n`;
       });
     }
-
-    return message ? `📝 *الواجبات المنزلية:*\n${message}` : '';
-  }, [homework, coreData.students]);
+  
+    return message;
+  }, [homework.assignments, coreData.students]);
 
   const generateMessage = useCallback(() => {
     // Opening and Welcome
@@ -768,101 +776,11 @@ const WeeklyMessageGenerator = () => {
 
         {/* Homework Section */}
         <div className="mb-4 rounded-lg border border-gray-700 bg-gray-800 shadow-sm">
-          <div className="flex items-center gap-2 p-6 pb-2">
-            <input
-              type="checkbox"
-              className="h-4 w-4 rounded border border-gray-600 bg-gray-700"
-              checked={homework.general.enabled}
-              onChange={(e) => handleHomeworkChange('enabled', e.target.checked)}
-            />
-            <h3 className="text-lg font-semibold leading-none tracking-tight">
-              الواجبات
-            </h3>
-          </div>
-          {homework.general.enabled && (
-            <div className="p-6 pt-0 space-y-4">
-              {/* General Homework */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium">الواجب العام (لجميع الطلاب)</label>
-                <textarea
-                  className="w-full min-h-[100px] rounded-md border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-gray-100"
-                  value={homework.general.content}
-                  onChange={(e) => handleHomeworkChange('content', e.target.value)}
-                  placeholder="اكتب الواجب العام هنا"
-                  dir="rtl"
-                />
-              </div>
-
-              {/* Specific Homework Section */}
-              <div className="border-t pt-4">
-                <div className="flex justify-between items-center mb-4">
-                  <h4 className="text-sm font-medium">الواجبات الخاصة</h4>
-                </div>
-
-                <div className="space-y-4">
-                  {homework.specific.assignments.map((assignment, index) => (
-                    <div key={index} className="border rounded-lg p-4">
-                      <div className="flex justify-between items-start gap-2">
-                        <div className="flex-1 space-y-4">
-                          {/* Student Selection Area */}
-                          <div className="bg-gray-900 rounded-lg p-3 border border-gray-700">
-                            <div className="text-sm text-gray-400 mb-2">اختر الطلاب:</div>
-                            <div className="grid grid-cols-2 gap-2">
-                              {coreData.students.map(student => (
-                                <div key={student.id} className="flex items-center gap-2 p-1">
-                                  <input
-                                    type="checkbox"
-                                    className="h-4 w-4 rounded border border-gray-600 bg-gray-700"
-                                    checked={assignment.studentIds.includes(student.id)}
-                                    onChange={(e) => {
-                                      const newIds = e.target.checked
-                                        ? [...assignment.studentIds, student.id]
-                                        : assignment.studentIds.filter(id => id !== student.id);
-                                      handleSpecificHomework('update', index, { studentIds: newIds });
-                                    }}
-                                  />
-                                  <span className="text-sm">{student.name}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* Homework Content Area */}
-                          <div>
-                            <textarea
-                              className="w-full min-h-[100px] rounded-md border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-gray-100"
-                              value={assignment.content}
-                              onChange={(e) => handleSpecificHomework('update', index, { content: e.target.value })}
-                              placeholder="اكتب الواجب الخاص هنا"
-                              dir="rtl"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Delete Button */}
-                        <button
-                          onClick={() => handleSpecificHomework('remove', index)}
-                          className="inline-flex items-center justify-center rounded-md text-sm font-medium h-10 w-10 hover:bg-red-600/10 text-red-600 transition-colors"
-                          title="حذف الواجب"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-
-                  {/* Add Button */}
-                  <button
-                    onClick={() => handleSpecificHomework('add')}
-                    className="w-full border-2 border-dashed rounded-md p-3 hover:bg-gray-700/50 border-gray-700 transition-colors"
-                  >
-                    <Plus className="h-4 w-4 inline-block ml-2" />
-                    إضافة واجب خاص
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+          <HomeworkSection
+            students={coreData.students}
+            homework={homework}
+            onHomeworkChange={setHomework}
+          />
         </div>
 
         {/* Dynamic Sections */}
