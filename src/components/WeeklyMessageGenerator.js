@@ -148,7 +148,7 @@ const WeeklyMessageGenerator = () => {
         localStorage.removeItem(key);
       }
     });
-  
+
     // Reset all states
     setReportDate(new Date().toISOString().split('T')[0]);
     setAttendance({});
@@ -161,7 +161,7 @@ const WeeklyMessageGenerator = () => {
       reminders: { enabled: true, fields: [] },
       custom: { enabled: false, fields: [] }
     });
-  
+
     // Force a re-render
     setIsMounted(false);
     setTimeout(() => setIsMounted(true), 0);
@@ -347,40 +347,52 @@ const WeeklyMessageGenerator = () => {
     if (!homework.assignments || homework.assignments.length === 0) {
       return '';
     }
-  
+
     let message = '📝 *الواجبات المنزلية*\n\n';
-    
-    // Separate assignments into general and specific
-    const generalAssignments = homework.assignments.filter(a => a.isGeneral);
-    const specificAssignments = homework.assignments.filter(a => !a.isGeneral);
-  
-    // Handle general assignments
-    if (generalAssignments.length > 0) {
+
+    // First, let's group homework assignments
+    const generalHomework = homework.assignments.filter(hw => !hw.assignedStudents?.length);
+    const specificHomework = homework.assignments.filter(hw => hw.assignedStudents?.length > 0);
+
+    // Handle general homework (assigned to all students)
+    if (generalHomework.length > 0) {
       message += '*الواجبات العامة:*\n';
-      generalAssignments.forEach(assignment => {
-        const typeLabel = homeworkTypes[assignment.type].label;
-        message += `• ${typeLabel}: ${assignment.content}\n`;
+      generalHomework.forEach(hw => {
+        const typeLabel = homeworkTypes[hw.type].label;
+        message += `• ${typeLabel}: ${hw.content}\n`;
       });
+      message += '\n';
     }
-  
-    // Handle specific assignments
-    if (specificAssignments.length > 0) {
-      if (generalAssignments.length > 0) {
-        message += '\n';
-      }
+
+    // Handle specific homework (assigned to specific students)
+    if (specificHomework.length > 0) {
       message += '*الواجبات الخاصة:*\n';
-      specificAssignments.forEach(assignment => {
-        const studentNames = assignment.students
-          .map(id => coreData.students.find(s => s.id === id)?.name)
-          .filter(Boolean)
-          .join(' و ');
-  
-        const typeLabel = homeworkTypes[assignment.type].label;
-        message += `• *${studentNames}:*\n`;
-        message += `  ${typeLabel}: ${assignment.content}\n`;
+
+      // Group homework by students for better organization
+      const studentHomework = {};
+
+      specificHomework.forEach(hw => {
+        hw.assignedStudents.forEach(studentId => {
+          if (!studentHomework[studentId]) {
+            studentHomework[studentId] = [];
+          }
+          studentHomework[studentId].push(hw);
+        });
+      });
+
+      // Generate message for each student's homework
+      Object.entries(studentHomework).forEach(([studentId, assignments]) => {
+        const student = coreData.students.find(s => s.id === studentId);
+        if (student) {
+          message += `\n👤 *${student.name}:*\n`;
+          assignments.forEach(hw => {
+            const typeLabel = homeworkTypes[hw.type].label;
+            message += `• ${typeLabel}: ${hw.content}\n`;
+          });
+        }
       });
     }
-  
+
     return message;
   }, [homework.assignments, coreData.students]);
 
@@ -451,7 +463,7 @@ const WeeklyMessageGenerator = () => {
       message += '\n\n';
     }
 
-    return message;
+    return message.trim();
   }, [
     coreData.className,
     formattedDate,
@@ -780,6 +792,7 @@ const WeeklyMessageGenerator = () => {
             students={coreData.students}
             homework={homework}
             onHomeworkChange={setHomework}
+            attendance={attendance}
           />
         </div>
 
