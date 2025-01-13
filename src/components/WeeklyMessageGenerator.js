@@ -12,7 +12,7 @@ import {
   Loader2,
   GraduationCap,
   Clock,
-  Link2
+  ChevronDown
 } from 'lucide-react';
 
 import { useHydration } from '@/context/HydrationContext'
@@ -82,6 +82,8 @@ const WeeklyMessageGenerator = () => {
   const [showConfirmation, setShowConfirmation] = useState(false);
 
   const [isLoading, setIsLoading] = useState(true);
+
+  const [isOpen, setIsOpen] = useState(false);
 
   const [reportDate, setReportDate] = useLocalStorage('reportDate', (() => {
     if (typeof window === 'undefined') return '';
@@ -343,60 +345,83 @@ const WeeklyMessageGenerator = () => {
     return message;
   }, [attendance, coreData.students]);
 
-  const getHomeworkMessage = useCallback(() => {
+  const getHomeworkMessage = useCallback((format = 'student') => {
     if (!homework.assignments || homework.assignments.length === 0) {
       return '';
     }
 
     let message = '📝 *الواجبات المنزلية*\n\n';
-
-    // First, let's group homework assignments
     const generalHomework = homework.assignments.filter(hw => !hw.assignedStudents?.length);
     const specificHomework = homework.assignments.filter(hw => hw.assignedStudents?.length > 0);
 
-    // Handle general homework (assigned to all students)
-    if (generalHomework.length > 0) {
-      message += '*الواجبات العامة:*\n';
-      generalHomework.forEach(hw => {
-        const typeLabel = homeworkTypes[hw.type].label;
-        message += `• ${typeLabel}: ${hw.content}\n`;
-      });
-      message += '\n';
-    }
-
-    // Handle specific homework (assigned to specific students)
-    if (specificHomework.length > 0) {
-      message += '*الواجبات الخاصة:*\n';
-
-      // Group homework by students for better organization
-      const studentHomework = {};
-
-      specificHomework.forEach(hw => {
-        hw.assignedStudents.forEach(studentId => {
-          if (!studentHomework[studentId]) {
-            studentHomework[studentId] = [];
-          }
-          studentHomework[studentId].push(hw);
+    if (format === 'student') {
+      // Current student-oriented format
+      if (generalHomework.length > 0) {
+        message += '*الواجبات العامة:*\n';
+        generalHomework.forEach(hw => {
+          const typeLabel = homeworkTypes[hw.type].label;
+          message += `• ${typeLabel}: ${hw.content}\n`;
         });
+        message += '\n';
+      }
+
+      if (specificHomework.length > 0) {
+        message += '*الواجبات الخاصة:*\n';
+        const studentHomework = {};
+        specificHomework.forEach(hw => {
+          hw.assignedStudents.forEach(studentId => {
+            if (!studentHomework[studentId]) {
+              studentHomework[studentId] = [];
+            }
+            studentHomework[studentId].push(hw);
+          });
+        });
+
+        Object.entries(studentHomework).forEach(([studentId, assignments]) => {
+          const student = coreData.students.find(s => s.id === studentId);
+          if (student) {
+            message += `\n👤 *${student.name}:*\n`;
+            assignments.forEach(hw => {
+              const typeLabel = homeworkTypes[hw.type].label;
+              message += `• ${typeLabel}: ${hw.content}\n`;
+            });
+          }
+        });
+      }
+    } else {
+      // Task-oriented format
+      const allHomework = [...generalHomework, ...specificHomework];
+      const groupedByType = {};
+
+      allHomework.forEach(hw => {
+        if (!groupedByType[hw.type]) {
+          groupedByType[hw.type] = [];
+        }
+        groupedByType[hw.type].push(hw);
       });
 
-      // Generate message for each student's homework
-      Object.entries(studentHomework).forEach(([studentId, assignments]) => {
-        const student = coreData.students.find(s => s.id === studentId);
-        if (student) {
-          message += `\n👤 *${student.name}:*\n`;
-          assignments.forEach(hw => {
-            const typeLabel = homeworkTypes[hw.type].label;
-            message += `• ${typeLabel}: ${hw.content}\n`;
-          });
-        }
+      Object.entries(groupedByType).forEach(([type, assignments]) => {
+        const typeLabel = homeworkTypes[type].label;
+        message += `*${typeLabel}:*\n`;
+
+        assignments.forEach(hw => {
+          message += `• ${hw.content}`;
+          if (hw.assignedStudents?.length > 0) {
+            const students = hw.assignedStudents
+              .map(id => coreData.students.find(s => s.id === id)?.name)
+              .filter(Boolean);
+            message += ` (${students.join('، ')})`;
+          }
+          message += '\n';
+        });
+        message += '\n';
       });
     }
 
     return message;
   }, [homework.assignments, coreData.students]);
 
-  const generateMessage = useCallback(() => {
+  const generateMessage = useCallback((format = 'student') => {
     // Opening and Welcome
     let message = 'بسم الله الرحمن الرحيم\n';
     message += 'السلام عليكم ورحمة الله وبركاته\n\n';
@@ -448,7 +473,7 @@ const WeeklyMessageGenerator = () => {
     });
 
     // Homework Section
-    const homeworkMessage = getHomeworkMessage();
+    const homeworkMessage = getHomeworkMessage(format);
     if (homeworkMessage) {
       message += homeworkMessage + '\n';
     }
@@ -474,8 +499,8 @@ const WeeklyMessageGenerator = () => {
     getHomeworkMessage
   ]);
 
-  const copyToClipboard = useCallback(() => {
-    const message = generateMessage();
+  const copyToClipboard = useCallback((format = 'student') => {
+    const message = generateMessage(format);
 
     setCopyStatus('copying');
     navigator.clipboard.writeText(message)
@@ -863,80 +888,54 @@ const WeeklyMessageGenerator = () => {
         {/* Footer Actions */}
         <div className="relative">
           <div className="mt-8 flex justify-center">
-            {/* Copy Message Button */}
-            <button
-              onClick={copyToClipboard}
-              disabled={copyStatus === 'copying'}
-              className={`
-        inline-flex items-center justify-center rounded-md text-sm font-medium 
-        h-12 px-6 py-2 transition-colors text-white group w-full max-w-md
-        ${copyStatus === 'copied'
-                  ? 'bg-green-600 hover:bg-green-700'
-                  : 'bg-blue-600 hover:bg-blue-700'}
-      `}
-            >
-              <div className="flex items-center gap-2">
-                {copyStatus === 'copying' ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : copyStatus === 'copied' ? (
-                  <Check className="h-5 w-5 transition-transform group-hover:scale-110" />
-                ) : (
-                  <Copy className="h-5 w-5 transition-transform group-hover:scale-110" />
-                )}
-                <span className="font-medium">
-                  {copyStatus === 'copying'
-                    ? 'جاري النسخ...'
-                    : copyStatus === 'copied'
-                      ? 'تم النسخ!'
-                      : 'نسخ الرسالة'}
-                </span>
-              </div>
-            </button>
+            <div className="relative w-full max-w-md">
+              {isOpen && (
+                <div className="absolute bottom-full right-0 mb-1 w-full bg-gray-900 border border-gray-700 rounded-lg shadow-lg overflow-hidden z-10">
+                  <button
+                    onClick={() => {
+                      copyToClipboard('student');
+                      setIsOpen(false);
+                    }}
+                    className="w-full text-right px-4 py-3 hover:bg-gray-800 transition-colors"
+                  >
+                    نسخ (حسب الطلاب)
+                  </button>
+                  <button
+                    onClick={() => {
+                      copyToClipboard('task');
+                      setIsOpen(false);
+                    }}
+                    className="w-full text-right px-4 py-3 hover:bg-gray-800 transition-colors"
+                  >
+                    نسخ (حسب الواجبات)
+                  </button>
+                </div>
+              )}
 
-            {/* Copy Success Notification */}
-            <div className={`
-      absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-full
-      transition-opacity duration-200 pointer-events-none
-      ${copyStatus === 'copied' ? 'opacity-100' : 'opacity-0'}  
-    `}>
-              <div className="bg-green-600 text-white px-4 py-2 rounded-md shadow-lg text-sm whitespace-nowrap">
+              <button
+                onClick={() => setIsOpen(!isOpen)}
+                className={`
+          inline-flex items-center justify-center rounded-md text-sm font-medium 
+          h-12 px-6 py-2 transition-colors text-white group w-full
+          ${copyStatus === 'copied'
+                    ? 'bg-green-600 hover:bg-green-700'
+                    : 'bg-blue-600 hover:bg-blue-700'}
+        `}
+                disabled={copyStatus === 'copying'}
+              >
                 <div className="flex items-center gap-2">
-                  <Check className="h-4 w-4" />
-                  <span>تم نسخ الرسالة بنجاح</span>
+                  {copyStatus === 'copying' ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : copyStatus === 'copied' ? (
+                    <Check className="h-5 w-5 transition-transform group-hover:scale-110" />
+                  ) : (
+                    <Copy className="h-5 w-5 transition-transform group-hover:scale-110" />
+                  )}
+                  <span className="font-medium">نسخ الرسالة</span>
+                  <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
                 </div>
-              </div>
+              </button>
             </div>
-
-            {/* Confirmation Modal */}
-            {showConfirmation && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div className="bg-gray-800 rounded-lg p-6 max-w-sm w-full shadow-lg">
-                  <h3 className="text-lg font-semibold text-gray-100 mb-4">
-                    هل أنت متأكد؟
-                  </h3>
-                  <p className="text-sm text-gray-400 mb-6">
-                    سيتم مسح جميع البيانات الحالية وبدء حصة جديدة. لا يمكن التراجع عن هذا الإجراء.
-                  </p>
-                  <div className="flex justify-end gap-4">
-                    <button
-                      onClick={() => setShowConfirmation(false)}
-                      className="px-4 py-2 rounded-md bg-gray-600 text-gray-100 hover:bg-gray-700 transition-colors"
-                    >
-                      إلغاء
-                    </button>
-                    <button
-                      onClick={() => {
-                        clearData();
-                        setShowConfirmation(false);
-                      }}
-                      className="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700 transition-colors"
-                    >
-                      تأكيد
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>

@@ -378,18 +378,6 @@ const HomeworkSection = ({ students, homework, onHomeworkChange, attendance = {}
       <div className="flex flex-col space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold">الواجبات العامة</h2>
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="specific-homework"
-              checked={showSpecificHomework}
-              onChange={(e) => setShowSpecificHomework(e.target.checked)}
-              className="rounded border-gray-700 bg-gray-800"
-            />
-            <label htmlFor="specific-homework" className="text-sm cursor-pointer">
-              إضافة واجبات خاصة لكل طالب
-            </label>
-          </div>
         </div>
 
         <HomeworkTypeButtons
@@ -422,6 +410,19 @@ const HomeworkSection = ({ students, homework, onHomeworkChange, attendance = {}
                 />
               </div>
             ))}
+        </div>
+
+        <div className="flex items-center gap-2 justify-start mt-4 pt-4 border-t border-gray-800">
+          <input
+            type="checkbox"
+            id="specific-homework"
+            checked={showSpecificHomework}
+            onChange={(e) => setShowSpecificHomework(e.target.checked)}
+            className="rounded border-gray-700 bg-gray-800"
+          />
+          <label htmlFor="specific-homework" className="text-sm cursor-pointer">
+            إضافة واجبات خاصة لكل طالب
+          </label>
         </div>
       </div>
     </div>
@@ -530,8 +531,8 @@ const HomeworkSection = ({ students, homework, onHomeworkChange, attendance = {}
       {showSpecificHomework && (
         <div className="space-y-2">
           {sortedStudents.map((student) => (
-            <StudentCard 
-              key={student.id} 
+            <StudentCard
+              key={student.id}
               student={student}
               isAbsent={isStudentAbsent(student.id)}
             />
