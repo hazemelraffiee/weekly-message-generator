@@ -7,7 +7,7 @@ const AttendanceCard = ({ student, initialStatus, onAttendanceChange }) => {
   const [status, setStatus] = useState(
     initialStatus?.present ? (initialStatus.lateMinutes ? 'late' : 'present') : 'absent'
   );
-  
+
   // Late minutes can be either null (not set), a number, or 'أكثر'
   const [lateMinutes, setLateMinutes] = useState(initialStatus?.lateMinutes || null);
 
@@ -20,7 +20,7 @@ const AttendanceCard = ({ student, initialStatus, onAttendanceChange }) => {
     if (newStatus !== 'late') {
       setLateMinutes(null);
     }
-    
+
     setStatus(newStatus);
     onAttendanceChange(student.id, {
       present: newStatus !== 'absent',
@@ -52,22 +52,35 @@ const AttendanceCard = ({ student, initialStatus, onAttendanceChange }) => {
   const getStatusClasses = () => {
     switch (status) {
       case 'absent':
-        return 'border-red-400/50';
+        return 'border-red-500/30 hover:border-red-500/50';
       case 'present':
-        return 'border-green-400/50';
+        return 'border-green-500/30 hover:border-green-500/50';
       case 'late':
-        return 'border-yellow-400/50';
+        return 'border-yellow-500/30 hover:border-yellow-500/50';
       default:
         return 'border-gray-700';
     }
   };
 
+  const handleNameClick = () => {
+    // If currently late, go to absent first
+    if (status === 'late') {
+      handleStatusChange('absent');
+    } else {
+      // Otherwise toggle between present and absent
+      handleStatusChange(status === 'present' ? 'absent' : 'present');
+    }
+  };
+
   return (
-    <div className={`rounded-lg p-3 border bg-gray-800/50 ${getStatusClasses()}`}>
+    <div className={`rounded-lg p-4 border bg-gray-900/80 backdrop-blur-sm transition-all duration-300 ${getStatusClasses()}`}>
       {/* Student Info and Status Controls Row */}
       <div className="flex items-center justify-between gap-2">
         {/* Student Name */}
-        <div className="font-medium text-gray-200">
+        <div
+          className="font-semibold text-lg text-gray-100 cursor-pointer hover:opacity-80 transition-opacity select-none"
+          onClick={handleNameClick}
+        >
           {student.name}
         </div>
 
@@ -113,7 +126,7 @@ const AttendanceCard = ({ student, initialStatus, onAttendanceChange }) => {
 
       {/* Late Minutes Selection Section */}
       {status === 'late' && (
-        <div className="mt-2">
+        <div className="mt-4 space-y-2">
           {lateMinutes ? (
             // When minutes are selected, show single button with current value
             <button
@@ -129,7 +142,7 @@ const AttendanceCard = ({ student, initialStatus, onAttendanceChange }) => {
                 <button
                   key={minutes}
                   onClick={() => handleLateMinutesChange(minutes)}
-                  className="py-1 rounded bg-gray-700 text-gray-300 text-sm hover:bg-gray-600 transition-colors"
+                  className="py-2 rounded-lg bg-gray-800 text-gray-300 text-sm hover:bg-gray-700 hover:text-gray-100 transition-all duration-200"
                 >
                   {formatLateMinutes(minutes)}
                 </button>

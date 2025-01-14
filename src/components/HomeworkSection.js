@@ -50,7 +50,7 @@ const HomeworkTypeButton = ({ type, config, onAddForAll, onAddForGroup }) => {
       <button
         ref={buttonRef}
         onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center gap-2 px-3 py-2 rounded border border-gray-700 ${config.style}`}
+        className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-700 ${config.style} transition-all duration-200 hover:scale-102`}
       >
         <Plus className="h-4 w-4" />
         {config.label}
@@ -127,7 +127,7 @@ const HomeworkItem = ({
   return (
     <>
       <div
-        className={`flex items-center justify-between py-2 border-b border-gray-800 last:border-0 transition-colors duration-300 ${isReferenceToGeneral ? 'opacity-75' : ''
+        className={`flex items-center justify-between py-3 border-b border-gray-800 last:border-0 transition-all duration-300 hover:bg-gray-800/20 ${isReferenceToGeneral ? 'opacity-75 hover:opacity-90' : ''
           }`}
         id={id}
       >
@@ -141,7 +141,7 @@ const HomeworkItem = ({
               onKeyPress={handleKeyPress}
               onBlur={handleSave}
               autoFocus
-              className="border border-gray-700 bg-gray-800 rounded px-2 py-1 ml-2 w-64 text-gray-100"
+              className="border border-gray-700 bg-gray-800/50 rounded-lg px-3 py-2 ml-2 w-64 text-gray-100 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200"
             />
           ) : (
             <span className="text-gray-300">{content || "___________"}</span>
@@ -194,8 +194,8 @@ const HomeworkItem = ({
       </div>
 
       {showDeleteDialog && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-gray-900 p-6 rounded-lg max-w-md w-full mx-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-gray-900/90 p-8 rounded-xl w-96 max-w-full shadow-xl border border-gray-800">
             <h3 className="text-xl font-bold text-gray-100 mb-4 text-right">تأكيد الحذف</h3>
             <p className="text-gray-300 text-right mb-6">هل أنت متأكد من حذف هذا الواجب؟</p>
             <div className="flex justify-end gap-2">
@@ -226,8 +226,8 @@ const StudentSelector = ({ students, onConfirm, onCancel }) => {
   const [selectedStudents, setSelectedStudents] = useState([]);
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-gray-900 p-6 rounded-lg w-96 max-w-full">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="bg-gray-900/90 p-8 rounded-xl w-96 max-w-full shadow-xl border border-gray-800">
         <h3 className="text-xl text-right mb-4">اختر الطلاب</h3>
 
         <div className="mb-4 flex justify-end gap-2">
@@ -374,10 +374,10 @@ const HomeworkSection = ({ students, homework, onHomeworkChange, attendance = {}
 
   // Component for general homework section
   const GeneralHomeworkCard = () => (
-    <div className="w-full mb-6 border border-gray-800 rounded-lg bg-gray-900 p-6">
+    <div className="w-full mb-8 border border-gray-800 rounded-lg bg-gray-900/80 p-8">
       <div className="flex flex-col space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold">الواجبات العامة</h2>
+          <h2 className="text-2xl font-bold text-gray-100 mb-6">الواجبات العامة</h2>
         </div>
 
         <HomeworkTypeButtons
@@ -438,20 +438,20 @@ const HomeworkSection = ({ students, homework, onHomeworkChange, attendance = {}
     const generalCount = studentHomework.general.length;
 
     return (
-      <div className="w-full mb-2 border border-gray-800 rounded-lg bg-gray-900">
+      <div className="w-full mb-3 border border-gray-800 rounded-lg bg-gray-900/80 hover:bg-gray-900 transition-all duration-300">
         <div
           className="px-6 py-4 cursor-pointer hover:bg-gray-800/50 transition-colors flex items-center justify-between"
           onClick={() => setOpenStudentId(isOpen ? null : student.id)}
         >
           <div className="flex items-center gap-4">
-            <span className={`text-lg font-semibold ${isAbsent ? 'text-red-400' : 'text-gray-200'}`}>
+            <span className={`text-xl font-semibold ${isAbsent ? 'text-red-400' : 'text-gray-100'}`}>
               👤 {student.name}
             </span>
 
             {/* Homework count badges */}
             <div className="flex items-center gap-2">
               {specificCount > 0 && (
-                <div className="px-2 py-1 text-sm rounded-full bg-blue-900/50 text-blue-300 border border-blue-700">
+                <div className="px-3 py-1.5 text-sm rounded-full bg-blue-900/40 text-blue-200 border border-blue-700/50 backdrop-blur-sm">
                   {specificCount} خاص
                 </div>
               )}
