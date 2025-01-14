@@ -942,7 +942,12 @@ const WeeklyMessageGenerator = () => {
     );
   };
 
-  return renderContent();
+  return (
+    <>
+      {showConfirmation && renderConfirmationModal()}
+      {renderContent()}
+    </>
+  );
 };
 
 // Add this export statement at the end of the file
