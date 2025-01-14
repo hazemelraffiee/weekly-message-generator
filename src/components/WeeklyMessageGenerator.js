@@ -96,7 +96,7 @@ const WeeklyMessageGenerator = () => {
     weekStudy: { enabled: true, fields: [] },
     notes: { enabled: true, fields: [] },
     reminders: { enabled: true, fields: [] },
-    custom: { enabled: false, fields: [] }
+    custom: { enabled: true, fields: [] }
   });
   const [homework, setHomework] = useLocalStorage('homework', {
     assignments: [] // Initialize with empty assignments array
@@ -161,7 +161,7 @@ const WeeklyMessageGenerator = () => {
       weekStudy: { enabled: true, fields: [] },
       notes: { enabled: true, fields: [] },
       reminders: { enabled: true, fields: [] },
-      custom: { enabled: false, fields: [] }
+      custom: { enabled: true, fields: [] }
     });
 
     // Force a re-render
