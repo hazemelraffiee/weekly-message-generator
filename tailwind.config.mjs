@@ -16,7 +16,18 @@ export default {
       },
       fontFamily: {
         // Adding Arabic-optimized fonts
-        arabic: ['IBM Plex Sans Arabic', 'Noto Sans Arabic', 'Dubai', 'Almarai', 'system-ui', 'sans-serif'],
+        arabic: [
+          'IBM Plex Sans Arabic',
+          'Noto Sans Arabic',
+          // Android Arabic fonts
+          'Droid Arabic Naskh',
+          'Roboto-Regular',
+          'HelveticaNeue',
+          'Dubai',
+          'Almarai',
+          'system-ui',
+          'sans-serif'
+        ],
       },
       // Adding custom line heights for better Arabic text spacing
       lineHeight: {
