@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
-import { Folder, AlertCircle, Upload, Menu, X, Users, Clock, GraduationCap } from 'lucide-react';
+import { Folder, AlertCircle, Upload, Menu, X, Users, Clock, GraduationCap, TrendingUp } from 'lucide-react';
+
+import ClassroomAnalytics from '@/components/ClassroomAnalytics';
 
 const ClassroomOverview = () => {
   // State for search and sorting
@@ -51,7 +53,7 @@ const ClassroomOverview = () => {
       }
 
       setClassroomData(newClassroomData);
-      setSelectedClassroom(Object.keys(newClassroomData)[0]);
+      setSelectedClassroom('overview');
       setStatus('');
     } catch (err) {
       console.error('Error processing files:', err);
@@ -381,6 +383,24 @@ const ClassroomOverview = () => {
           <div className="flex-1 overflow-y-auto">
             <h3 className="text-sm font-medium text-gray-400 mb-2">الفصول</h3>
             <div className="space-y-2">
+              {/* Add Overview item first */}
+              <div
+                onClick={() => setSelectedClassroom('overview')}
+                className={`p-3 rounded-lg cursor-pointer transition-all ${selectedClassroom === 'overview'
+                  ? 'bg-blue-900/30 border border-blue-700'
+                  : 'hover:bg-gray-700/50 border border-transparent'
+                  }`}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <TrendingUp className="w-4 h-4 text-gray-400" />
+                  <span className="font-medium text-sm text-gray-200">نظرة عامة</span>
+                </div>
+                <div className="text-xs text-gray-400">
+                  {Object.keys(classroomData).length} فصول
+                </div>
+              </div>
+
+              {/* Classroom items */}
               {Object.entries(classroomData).map(([className, data]) => (
                 <div
                   key={className}
@@ -437,318 +457,324 @@ const ClassroomOverview = () => {
           </div>
         )}
 
-        {selectedClassroom && classroomData[selectedClassroom] && (
-          <div className="space-y-6">
-            {/* Enhanced Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Total Students Card */}
-              <div className="bg-gray-800 rounded-xl p-4 border border-gray-700 shadow-lg hover:border-gray-600 transition-all duration-300">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-400 mb-1">إجمالي الطلاب</p>
-                    <p className="text-2xl font-bold text-gray-100">
-                      {classroomData[selectedClassroom].totalStudents}
-                    </p>
+        {selectedClassroom && (
+          selectedClassroom === 'overview' ? (
+            <ClassroomAnalytics classroomData={classroomData} />
+          ) : (
+            classroomData[selectedClassroom] && (
+              <div className="space-y-6">
+                {/* Enhanced Stats Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {/* Total Students Card */}
+                  <div className="bg-gray-800 rounded-xl p-4 border border-gray-700 shadow-lg hover:border-gray-600 transition-all duration-300">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-400 mb-1">إجمالي الطلاب</p>
+                        <p className="text-2xl font-bold text-gray-100">
+                          {classroomData[selectedClassroom].totalStudents}
+                        </p>
+                      </div>
+                      <div className="w-12 h-12 bg-blue-900/30 rounded-full flex items-center justify-center">
+                        <Users className="w-6 h-6 text-blue-400" />
+                      </div>
+                    </div>
                   </div>
-                  <div className="w-12 h-12 bg-blue-900/30 rounded-full flex items-center justify-center">
-                    <Users className="w-6 h-6 text-blue-400" />
-                  </div>
-                </div>
-              </div>
 
-              {/* Average Attendance Card */}
-              <div className="bg-gray-800 rounded-xl p-4 border border-gray-700 shadow-lg hover:border-gray-600 transition-all duration-300">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-400 mb-1">متوسط نسبة الحضور</p>
-                    <p className="text-2xl font-bold text-gray-100">
-                      {classroomData[selectedClassroom].averageAttendance.toFixed(1)}%
-                    </p>
+                  {/* Average Attendance Card */}
+                  <div className="bg-gray-800 rounded-xl p-4 border border-gray-700 shadow-lg hover:border-gray-600 transition-all duration-300">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-400 mb-1">متوسط نسبة الحضور</p>
+                        <p className="text-2xl font-bold text-gray-100">
+                          {classroomData[selectedClassroom].averageAttendance.toFixed(1)}%
+                        </p>
+                      </div>
+                      <div className="w-12 h-12 bg-green-900/30 rounded-full flex items-center justify-center">
+                        <Clock className="w-6 h-6 text-green-400" />
+                      </div>
+                    </div>
+                    <div className="mt-3 h-2 bg-gray-700 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-green-500 rounded-full transition-all duration-500"
+                        style={{ width: `${Math.min(classroomData[selectedClassroom].averageAttendance, 100)}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="w-12 h-12 bg-green-900/30 rounded-full flex items-center justify-center">
-                    <Clock className="w-6 h-6 text-green-400" />
-                  </div>
-                </div>
-                <div className="mt-3 h-2 bg-gray-700 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-green-500 rounded-full transition-all duration-500"
-                    style={{ width: `${Math.min(classroomData[selectedClassroom].averageAttendance, 100)}%` }}
-                  />
-                </div>
-              </div>
 
-              {/* Average Grade Card */}
-              <div className="bg-gray-800 rounded-xl p-4 border border-gray-700 shadow-lg hover:border-gray-600 transition-all duration-300">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-400 mb-1">متوسط الدرجات</p>
-                    <p className="text-2xl font-bold text-gray-100">
-                      {classroomData[selectedClassroom].averageGrade.toFixed(2)}
-                    </p>
+                  {/* Average Grade Card */}
+                  <div className="bg-gray-800 rounded-xl p-4 border border-gray-700 shadow-lg hover:border-gray-600 transition-all duration-300">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-400 mb-1">متوسط الدرجات</p>
+                        <p className="text-2xl font-bold text-gray-100">
+                          {classroomData[selectedClassroom].averageGrade.toFixed(2)}
+                        </p>
+                      </div>
+                      <div className="w-12 h-12 bg-purple-900/30 rounded-full flex items-center justify-center">
+                        <GraduationCap className="w-6 h-6 text-purple-400" />
+                      </div>
+                    </div>
                   </div>
-                  <div className="w-12 h-12 bg-purple-900/30 rounded-full flex items-center justify-center">
-                    <GraduationCap className="w-6 h-6 text-purple-400" />
-                  </div>
-                </div>
-              </div>
 
-              {/* Students Needing Attention Card */}
-              <div className={`rounded-xl p-4 border shadow-lg transition-all duration-300 ${classroomData[selectedClassroom].studentsNeedingAttention > 0
-                ? 'bg-red-900/20 border-red-800 hover:border-red-700'
-                : 'bg-gray-800 border-gray-700 hover:border-gray-600'
-                }`}>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-400 mb-1">غياب +3 أسابيع</p>
-                    <p className="text-2xl font-bold text-gray-100">
-                      {classroomData[selectedClassroom].studentsNeedingAttention}
-                    </p>
-                  </div>
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${classroomData[selectedClassroom].studentsNeedingAttention > 0
-                    ? 'bg-red-900/30'
-                    : 'bg-gray-700/50'
+                  {/* Students Needing Attention Card */}
+                  <div className={`rounded-xl p-4 border shadow-lg transition-all duration-300 ${classroomData[selectedClassroom].studentsNeedingAttention > 0
+                    ? 'bg-red-900/20 border-red-800 hover:border-red-700'
+                    : 'bg-gray-800 border-gray-700 hover:border-gray-600'
                     }`}>
-                    <AlertCircle className={`w-6 h-6 ${classroomData[selectedClassroom].studentsNeedingAttention > 0
-                      ? 'text-red-400'
-                      : 'text-gray-400'
-                      }`} />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Enhanced Students Table */}
-            <div className="bg-gray-800 rounded-xl border border-gray-700 shadow-lg overflow-hidden">
-              <div className="p-4 border-b border-gray-700">
-                <div className="flex flex-col gap-4">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-lg font-semibold text-gray-100">تفاصيل الطلاب</h2>
-                    <button
-                      onClick={() => setShowFilters(!showFilters)}
-                      className="px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg transition-colors flex items-center gap-2"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                      </svg>
-                      الفلترة والبحث
-                    </button>
-                  </div>
-
-                  {/* Search and Filters Panel */}
-                  {showFilters && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-gray-900/50 rounded-lg border border-gray-700">
-                      {/* Search Input */}
-                      <div className="relative">
-                        <input
-                          type="text"
-                          placeholder="بحث باسم الطالب..."
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                          className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500"
-                        />
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-400 mb-1">غياب +3 أسابيع</p>
+                        <p className="text-2xl font-bold text-gray-100">
+                          {classroomData[selectedClassroom].studentsNeedingAttention}
+                        </p>
                       </div>
-
-                      {/* Attendance Filter */}
-                      <div className="flex flex-col gap-1">
-                        <label className="text-sm text-gray-400">نسبة الحضور الأدنى</label>
-                        <input
-                          type="number"
-                          min="0"
-                          max="100"
-                          value={filters.attendanceThreshold}
-                          onChange={(e) => setFilters({ ...filters, attendanceThreshold: Number(e.target.value) })}
-                          className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-200 focus:outline-none focus:border-blue-500"
-                        />
-                      </div>
-
-                      {/* Grade Filter */}
-                      <div className="flex flex-col gap-1">
-                        <label className="text-sm text-gray-400">الدرجة الأدنى</label>
-                        <input
-                          type="number"
-                          min="0"
-                          max="100"
-                          value={filters.gradeThreshold}
-                          onChange={(e) => setFilters({ ...filters, gradeThreshold: Number(e.target.value) })}
-                          className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-200 focus:outline-none focus:border-blue-500"
-                        />
-                      </div>
-
-                      {/* Absence Duration Filter */}
-                      <div className="flex flex-col gap-1">
-                        <label className="text-sm text-gray-400">مدة الغياب (بالأيام)</label>
-                        <input
-                          type="number"
-                          min="0"
-                          value={filters.absenceDuration}
-                          onChange={(e) => setFilters({ ...filters, absenceDuration: Number(e.target.value) })}
-                          className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-200 focus:outline-none focus:border-blue-500"
-                        />
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center ${classroomData[selectedClassroom].studentsNeedingAttention > 0
+                        ? 'bg-red-900/30'
+                        : 'bg-gray-700/50'
+                        }`}>
+                        <AlertCircle className={`w-6 h-6 ${classroomData[selectedClassroom].studentsNeedingAttention > 0
+                          ? 'text-red-400'
+                          : 'text-gray-400'
+                          }`} />
                       </div>
                     </div>
-                  )}
-
-                  {/* Filter Summary */}
-                  {(searchTerm || Object.values(filters).some(v => v > 0)) && (
-                    <div className="flex items-center justify-between text-sm text-gray-400">
-                      <div className="flex items-center gap-2">
-                        <span>النتائج: {getFilteredStats().count} طالب</span>
-                        <span>•</span>
-                        <span>متوسط الحضور: {getFilteredStats().averageAttendance.toFixed(1)}%</span>
-                        <span>•</span>
-                        <span>متوسط الدرجات: {getFilteredStats().averageGrade.toFixed(2)}</span>
-                      </div>
-                      <button
-                        onClick={() => {
-                          setSearchTerm('');
-                          setFilters({
-                            attendanceThreshold: 0,
-                            gradeThreshold: 0,
-                            absenceDuration: 0
-                          });
-                        }}
-                        className="text-red-400 hover:text-red-300 transition-colors"
-                      >
-                        مسح الفلاتر
-                      </button>
-                    </div>
-                  )}
+                  </div>
                 </div>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  {/* Enhanced Table Header with Sorting Indicators */}
-                  <thead>
-                    <tr className="bg-gray-900/50">
-                      {[
-                        { key: 'name', label: 'اسم الطالب', sortable: true },
-                        { key: 'attendanceRate', label: 'نسبة الحضور', sortable: true },
-                        { key: 'averageGrade', label: 'متوسط الدرجات', sortable: true },
-                        { key: 'totalClasses', label: 'عدد الحصص', sortable: true },
-                        { key: 'totalTests', label: 'عدد الاختبارات', sortable: true },
-                        { key: 'lastAttendanceDate', label: 'آخر تسجيل', sortable: true },
-                        { key: 'lastAttendanceStatus', label: 'حالة آخر تسجيل', sortable: true },
-                        { key: 'absenceDuration', label: 'مدة الغياب', sortable: true }
-                      ].map(column => (
-                        <th
-                          key={column.key}
-                          className={`px-4 py-3 text-right text-sm font-medium text-gray-400 ${column.sortable ? 'cursor-pointer hover:text-gray-200' : ''
-                            }`}
-                          onClick={() => column.sortable && handleSort(column.key)}
-                          role={column.sortable ? 'button' : undefined}
-                          aria-sort={
-                            sortConfig.key === column.key
-                              ? sortConfig.direction === 'ascending'
-                                ? 'ascending'
-                                : 'descending'
-                              : undefined
-                          }
+
+                {/* Enhanced Students Table */}
+                <div className="bg-gray-800 rounded-xl border border-gray-700 shadow-lg overflow-hidden">
+                  <div className="p-4 border-b border-gray-700">
+                    <div className="flex flex-col gap-4">
+                      <div className="flex items-center justify-between">
+                        <h2 className="text-lg font-semibold text-gray-100">تفاصيل الطلاب</h2>
+                        <button
+                          onClick={() => setShowFilters(!showFilters)}
+                          className="px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg transition-colors flex items-center gap-2"
                         >
-                          <div className="flex items-center justify-between gap-2">
-                            <span>{column.label}</span>
-                            {column.sortable && (
-                              <div className="flex flex-col">
-                                <svg
-                                  className={`w-2 h-2 ${sortConfig.key === column.key && sortConfig.direction === 'ascending'
-                                    ? 'text-blue-400'
-                                    : 'text-gray-600'
-                                    }`}
-                                  fill="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path d="M12 5l8 8H4z" />
-                                </svg>
-                                <svg
-                                  className={`w-2 h-2 ${sortConfig.key === column.key && sortConfig.direction === 'descending'
-                                    ? 'text-blue-400'
-                                    : 'text-gray-600'
-                                    }`}
-                                  fill="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path d="M12 19l-8-8h16z" />
-                                </svg>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                          </svg>
+                          الفلترة والبحث
+                        </button>
+                      </div>
+
+                      {/* Search and Filters Panel */}
+                      {showFilters && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-gray-900/50 rounded-lg border border-gray-700">
+                          {/* Search Input */}
+                          <div className="relative">
+                            <input
+                              type="text"
+                              placeholder="بحث باسم الطالب..."
+                              value={searchTerm}
+                              onChange={(e) => setSearchTerm(e.target.value)}
+                              className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                            />
+                          </div>
+
+                          {/* Attendance Filter */}
+                          <div className="flex flex-col gap-1">
+                            <label className="text-sm text-gray-400">نسبة الحضور الأدنى</label>
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              value={filters.attendanceThreshold}
+                              onChange={(e) => setFilters({ ...filters, attendanceThreshold: Number(e.target.value) })}
+                              className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-200 focus:outline-none focus:border-blue-500"
+                            />
+                          </div>
+
+                          {/* Grade Filter */}
+                          <div className="flex flex-col gap-1">
+                            <label className="text-sm text-gray-400">الدرجة الأدنى</label>
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              value={filters.gradeThreshold}
+                              onChange={(e) => setFilters({ ...filters, gradeThreshold: Number(e.target.value) })}
+                              className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-200 focus:outline-none focus:border-blue-500"
+                            />
+                          </div>
+
+                          {/* Absence Duration Filter */}
+                          <div className="flex flex-col gap-1">
+                            <label className="text-sm text-gray-400">مدة الغياب (بالأيام)</label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={filters.absenceDuration}
+                              onChange={(e) => setFilters({ ...filters, absenceDuration: Number(e.target.value) })}
+                              className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-200 focus:outline-none focus:border-blue-500"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Filter Summary */}
+                      {(searchTerm || Object.values(filters).some(v => v > 0)) && (
+                        <div className="flex items-center justify-between text-sm text-gray-400">
+                          <div className="flex items-center gap-2">
+                            <span>النتائج: {getFilteredStats().count} طالب</span>
+                            <span>•</span>
+                            <span>متوسط الحضور: {getFilteredStats().averageAttendance.toFixed(1)}%</span>
+                            <span>•</span>
+                            <span>متوسط الدرجات: {getFilteredStats().averageGrade.toFixed(2)}</span>
+                          </div>
+                          <button
+                            onClick={() => {
+                              setSearchTerm('');
+                              setFilters({
+                                attendanceThreshold: 0,
+                                gradeThreshold: 0,
+                                absenceDuration: 0
+                              });
+                            }}
+                            className="text-red-400 hover:text-red-300 transition-colors"
+                          >
+                            مسح الفلاتر
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      {/* Enhanced Table Header with Sorting Indicators */}
+                      <thead>
+                        <tr className="bg-gray-900/50">
+                          {[
+                            { key: 'name', label: 'اسم الطالب', sortable: true },
+                            { key: 'attendanceRate', label: 'نسبة الحضور', sortable: true },
+                            { key: 'averageGrade', label: 'متوسط الدرجات', sortable: true },
+                            { key: 'totalClasses', label: 'عدد الحصص', sortable: true },
+                            { key: 'totalTests', label: 'عدد الاختبارات', sortable: true },
+                            { key: 'lastAttendanceDate', label: 'آخر تسجيل', sortable: true },
+                            { key: 'lastAttendanceStatus', label: 'حالة آخر تسجيل', sortable: true },
+                            { key: 'absenceDuration', label: 'مدة الغياب', sortable: true }
+                          ].map(column => (
+                            <th
+                              key={column.key}
+                              className={`px-4 py-3 text-right text-sm font-medium text-gray-400 ${column.sortable ? 'cursor-pointer hover:text-gray-200' : ''
+                                }`}
+                              onClick={() => column.sortable && handleSort(column.key)}
+                              role={column.sortable ? 'button' : undefined}
+                              aria-sort={
+                                sortConfig.key === column.key
+                                  ? sortConfig.direction === 'ascending'
+                                    ? 'ascending'
+                                    : 'descending'
+                                  : undefined
+                              }
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <span>{column.label}</span>
+                                {column.sortable && (
+                                  <div className="flex flex-col">
+                                    <svg
+                                      className={`w-2 h-2 ${sortConfig.key === column.key && sortConfig.direction === 'ascending'
+                                        ? 'text-blue-400'
+                                        : 'text-gray-600'
+                                        }`}
+                                      fill="currentColor"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path d="M12 5l8 8H4z" />
+                                    </svg>
+                                    <svg
+                                      className={`w-2 h-2 ${sortConfig.key === column.key && sortConfig.direction === 'descending'
+                                        ? 'text-blue-400'
+                                        : 'text-gray-600'
+                                        }`}
+                                      fill="currentColor"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path d="M12 19l-8-8h16z" />
+                                    </svg>
+                                  </div>
+                                )}
                               </div>
-                            )}
-                          </div>
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {getFilteredStudents().map((student, index) => (
-                      <tr
-                        key={student.name}
-                        className={`
-                          group
-                          border-b border-gray-700 last:border-0
-                          ${student.absenceDuration >= 21 ? 'bg-red-900/20' : 'bg-gray-800'}
-                          hover:bg-gray-700/50 transition-all duration-150 ease-in-out
-                        `}
-                      >
-                        <td className="px-4 py-3">
-                          <div className="flex items-center">
-                            <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center mr-3 group-hover:bg-gray-600 transition-colors">
-                              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                              </svg>
-                            </div>
-                            <span className="font-medium text-gray-200 group-hover:text-white transition-colors">{student.name}</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <div className="inline-flex items-center">
-                            <span className={`px-2 py-1 rounded-lg text-sm transition-all duration-150 ${student.attendanceRate >= 90
-                              ? 'bg-green-900/30 text-green-300 group-hover:bg-green-900/40' :
-                              student.attendanceRate >= 75
-                                ? 'bg-blue-900/30 text-blue-300 group-hover:bg-blue-900/40' :
-                                'bg-red-900/30 text-red-300 group-hover:bg-red-900/40'
-                              }`}>
-                              {student.attendanceRate.toFixed(1)}%
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <span className="font-medium text-gray-300 group-hover:text-gray-200 transition-colors">
-                            {student.averageGrade.toFixed(2)}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-center text-gray-300 group-hover:text-gray-200 transition-colors">
-                          {student.totalClasses}
-                        </td>
-                        <td className="px-4 py-3 text-center text-gray-300 group-hover:text-gray-200 transition-colors">
-                          {student.totalTests}
-                        </td>
-                        <td className="px-4 py-3 text-center text-gray-300 group-hover:text-gray-200 transition-colors">
-                          {convertExcelDate(student.lastAttendanceDate)}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <span className={`inline-flex items-center px-2 py-1 rounded-lg text-sm transition-all duration-150 ${student.lastAttendanceStatus === 'حاضر'
-                            ? 'bg-green-900/30 text-green-300 group-hover:bg-green-900/40'
-                            : 'bg-red-900/30 text-red-300 group-hover:bg-red-900/40'
-                            }`}>
-                            {student.lastAttendanceStatus || 'لا يوجد'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          {student.lastAttendanceStatus === 'غائب' && student.absenceDuration ? (
-                            <span className={`inline-flex items-center px-2 py-1 rounded-lg text-sm transition-all duration-150 ${student.absenceDuration >= 21
-                              ? 'bg-red-900/30 text-red-300 group-hover:bg-red-900/40'
-                              : 'bg-yellow-900/30 text-yellow-300 group-hover:bg-yellow-900/40'
-                              }`}>
-                              {student.absenceDuration} يوم
-                            </span>
-                          ) : (
-                            <span className="text-gray-500">-</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {getFilteredStudents().map((student, index) => (
+                          <tr
+                            key={student.name}
+                            className={`
+                              group
+                              border-b border-gray-700 last:border-0
+                              ${student.absenceDuration >= 21 ? 'bg-red-900/20' : 'bg-gray-800'}
+                              hover:bg-gray-700/50 transition-all duration-150 ease-in-out
+                            `}
+                          >
+                            <td className="px-4 py-3">
+                              <div className="flex items-center">
+                                <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center mr-3 group-hover:bg-gray-600 transition-colors">
+                                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                  </svg>
+                                </div>
+                                <span className="font-medium text-gray-200 group-hover:text-white transition-colors">{student.name}</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <div className="inline-flex items-center">
+                                <span className={`px-2 py-1 rounded-lg text-sm transition-all duration-150 ${student.attendanceRate >= 90
+                                  ? 'bg-green-900/30 text-green-300 group-hover:bg-green-900/40' :
+                                  student.attendanceRate >= 75
+                                    ? 'bg-blue-900/30 text-blue-300 group-hover:bg-blue-900/40' :
+                                    'bg-red-900/30 text-red-300 group-hover:bg-red-900/40'
+                                  }`}>
+                                  {student.attendanceRate.toFixed(1)}%
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <span className="font-medium text-gray-300 group-hover:text-gray-200 transition-colors">
+                                {student.averageGrade.toFixed(2)}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-center text-gray-300 group-hover:text-gray-200 transition-colors">
+                              {student.totalClasses}
+                            </td>
+                            <td className="px-4 py-3 text-center text-gray-300 group-hover:text-gray-200 transition-colors">
+                              {student.totalTests}
+                            </td>
+                            <td className="px-4 py-3 text-center text-gray-300 group-hover:text-gray-200 transition-colors">
+                              {convertExcelDate(student.lastAttendanceDate)}
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <span className={`inline-flex items-center px-2 py-1 rounded-lg text-sm transition-all duration-150 ${student.lastAttendanceStatus === 'حاضر'
+                                ? 'bg-green-900/30 text-green-300 group-hover:bg-green-900/40'
+                                : 'bg-red-900/30 text-red-300 group-hover:bg-red-900/40'
+                                }`}>
+                                {student.lastAttendanceStatus || 'لا يوجد'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              {student.lastAttendanceStatus === 'غائب' && student.absenceDuration ? (
+                                <span className={`inline-flex items-center px-2 py-1 rounded-lg text-sm transition-all duration-150 ${student.absenceDuration >= 21
+                                  ? 'bg-red-900/30 text-red-300 group-hover:bg-red-900/40'
+                                  : 'bg-yellow-900/30 text-yellow-300 group-hover:bg-yellow-900/40'
+                                  }`}>
+                                  {student.absenceDuration} يوم
+                                </span>
+                              ) : (
+                                <span className="text-gray-500">-</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
+            )
+          )
         )}
       </main>
     </div>

@@ -8,7 +8,7 @@ const ClassroomOverview = dynamic(
   { ssr: false }
 );
 
-export default function LinkCreatorPage() {
+export default function ClassroomOverviewPage() {
   return (
     <main className="min-h-screen bg-gray-900 py-8">
       <HydrationProvider>
