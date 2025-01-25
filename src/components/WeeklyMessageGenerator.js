@@ -730,17 +730,39 @@ const WeeklyMessageGenerator = () => {
                   </div>
                 </div>
 
-                {/* Bottom Section: New Session Button */}
+                {/* Bottom Section: New Session Button and Exam Button */}
                 <div className="border-t border-white/10 pt-4 mt-2">
-                  <button
-                    onClick={() => setShowConfirmation(true)}
-                    className="w-full md:w-auto inline-flex items-center justify-center rounded-md text-sm font-medium h-11 px-5 bg-amber-600 hover:bg-amber-700 transition-colors text-white group"
-                  >
-                    <div className="flex items-center gap-2">
-                      <PenLine className="h-5 w-5 transition-transform group-hover:scale-110" />
-                      <span className="font-medium">حصة جديدة</span>
-                    </div>
-                  </button>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <button
+                      onClick={() => setShowConfirmation(true)}
+                      className="w-full sm:w-auto inline-flex items-center justify-center rounded-md text-sm font-medium h-11 px-5 bg-amber-600 hover:bg-amber-700 transition-colors text-white group"
+                    >
+                      <div className="flex items-center gap-2">
+                        <PenLine className="h-5 w-5 transition-transform group-hover:scale-110" />
+                        <span className="font-medium">حصة جديدة</span>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        // Get current URL and parameter
+                        const currentParams = new URLSearchParams(window.location.search);
+                        const data = currentParams.get('data');
+
+                        // Construct exam URL with the same parameter
+                        const examUrl = `${window.location.pathname}exam/?data=${data}`;
+
+                        // Navigate to the exam page
+                        window.location.href = examUrl;
+                      }}
+                      className="w-full sm:w-auto inline-flex items-center justify-center rounded-md text-sm font-medium h-11 px-5 bg-blue-600 hover:bg-blue-700 transition-colors text-white group"
+                    >
+                      <div className="flex items-center gap-2">
+                        <GraduationCap className="h-5 w-5 transition-transform group-hover:scale-110" />
+                        <span className="font-medium">اختبار جديد</span>
+                      </div>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
