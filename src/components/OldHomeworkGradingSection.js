@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Plus, X, Check, ChevronDown, Trash2, MessageCircle, PenLine } from 'lucide-react';
 import useClickOutside from '@/hooks/useClickOutside';
+import GradeDisplay from '@/components/GradeDisplay';
 
 const styles = {
   input: "px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-gray-100",
@@ -66,7 +67,7 @@ const CommentCell = ({
   studentId,
   comment,
   onSaveComment,
-  onCancel,       // <-- new
+  onCancel,
   placeholder = "أضف ملاحظة..."
 }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -203,7 +204,7 @@ const OldHomeworkGradingSection = ({
 
   const handleGrade = (studentId, typeId, value) => {
     const newGrades = { ...grades.grades };
-    if (!value?.trim()) {
+    if (!value?.toString().trim()) {
       if (newGrades[studentId]) {
         delete newGrades[studentId][typeId];
         if (Object.keys(newGrades[studentId]).length === 0) {
@@ -212,7 +213,7 @@ const OldHomeworkGradingSection = ({
       }
     } else {
       if (!newGrades[studentId]) newGrades[studentId] = {};
-      newGrades[studentId][typeId] = value;
+      newGrades[studentId][typeId] = value.toString();
     }
     onGradesChange({
       types: grades.types,
@@ -287,14 +288,17 @@ const OldHomeworkGradingSection = ({
   );
 
   const renderGradeCell = (student, typeId, currentValue, type) => {
-    const isEditing = editingCell?.studentId === student.id && editingCell?.typeId === typeId;
-    if (isEditing) {
-      return <EditableCell currentValue={currentValue} onSave={(value) => handleGrade(student.id, typeId, value)} onCancel={() => setEditingCell(null)} />;
-    }
     return (
-      <button onClick={() => setEditingCell({ studentId: student.id, typeId })} className={`w-full px-3 py-1 rounded ${currentValue ? `${type.style} bg-opacity-25 ${!isValidGrade(currentValue) ? 'text-red-400' : ''}` : 'text-gray-500 hover:text-gray-400'}`}>
-        {currentValue || 'اضغط لإضافة درجة'}
-      </button>
+      <div className="w-full text-center">
+        <GradeDisplay
+          initialValue={currentValue ? Number(currentValue) : null}
+          gradingSystem={type.gradingSystem || 'german'}
+          editable={true}
+          min={type.minGrade || 1.0}
+          max={type.maxGrade || 5.0}
+          onChange={(value) => handleGrade(student.id, typeId, value)}
+        />
+      </div>
     );
   };
 
@@ -345,13 +349,19 @@ const OldHomeworkGradingSection = ({
                       <tr className="border-b border-gray-800 last:border-0 hover:bg-gray-800/30">
                         <td className="px-4 py-3">
                           {/* Student name with red if absent, etc. */}
-                          <span className={!attendance[student.id]?.present ? 'text-red-400' : 'text-gray-300'}>
+                          <span className={!attendance[student.id]?.present ? 'text-red-300 hover:text-red-200' : 'text-gray-300'}>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setOpenCommentStudentId(student.id);
+                                if(openCommentStudentId == student.id){
+                                  setOpenCommentStudentId(null);  
+                                }else{
+                                  setOpenCommentStudentId(student.id);
+                                }
                               }}
-                              className="ml-2 text-gray-400 hover:text-gray-200"
+                              className={`ml-2 ${!attendance[student.id]?.present 
+                                ? 'text-red-500 hover:text-red-300' 
+                                : 'text-gray-400 hover:text-gray-200'}`}
                             >
                               {student.name}
                             </button>
