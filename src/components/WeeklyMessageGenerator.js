@@ -12,7 +12,8 @@ import {
   Loader2,
   GraduationCap,
   Clock,
-  ChevronDown
+  ChevronDown,
+  Book
 } from 'lucide-react';
 
 import { useHydration } from '@/context/HydrationContext'
@@ -20,6 +21,8 @@ import { useHydration } from '@/context/HydrationContext'
 import { decodeData } from '@/components/LinkCreator'
 
 import AttendanceCard from '@/components/AttendanceCard';
+
+import OldHomeworkGradingSection from '@/components/OldHomeworkGradingSection';
 
 import HomeworkSection, { homeworkTypes } from '@/components/HomeworkSection';
 
@@ -98,6 +101,13 @@ const WeeklyMessageGenerator = () => {
     reminders: { enabled: true, fields: [] },
     custom: { enabled: true, fields: [] }
   });
+
+  const [homeworkGrades, setHomeworkGrades] = useLocalStorage('homeworkGrades', {
+    types: {},
+    grades: {},
+    comments: {}
+  });
+
   const [homework, setHomework] = useLocalStorage('homework', {
     assignments: [] // Initialize with empty assignments array
   });
@@ -164,10 +174,16 @@ const WeeklyMessageGenerator = () => {
       custom: { enabled: true, fields: [] }
     });
 
+    setHomeworkGrades({
+      types: homeworkTypes, // Reset to initial homework types
+      grades: {}, // Clear all grades
+      comments: {} // Clear all comments
+    });
+
     // Force a re-render
     setIsMounted(false);
     setTimeout(() => setIsMounted(true), 0);
-  }, [setReportDate, setFormattedDate, setAttendance, setHomework, setSections, setIsMounted]);
+  }, [setReportDate, setFormattedDate, setAttendance, setHomework, setSections, setHomeworkGrades, setIsMounted]);
 
   const handleAttendanceChange = useCallback((studentId, attendanceData) => {
     setAttendance(prev => ({
@@ -499,6 +515,20 @@ const WeeklyMessageGenerator = () => {
     getHomeworkMessage
   ]);
 
+  const handleGradesChange = useCallback((newGrades) => {
+    // Update the grades state
+    setHomeworkGrades(prevGrades => ({
+      ...prevGrades, 
+      ...newGrades
+    }));
+  
+    // Save the updated grades to local storage
+    localStorage.setItem('weeklyMessage_homeworkGrades', JSON.stringify({
+      ...homeworkGrades,
+      ...newGrades  
+    }));
+  }, [homeworkGrades]);
+
   const copyToClipboard = useCallback((format = 'student') => {
     const message = generateMessage(format);
 
@@ -809,18 +839,24 @@ const WeeklyMessageGenerator = () => {
           </div>
         </div>
 
-        {/* Attendance Section */}
-        <div className="border rounded-lg border-gray-700 bg-gray-800 overflow-hidden">
-          {/* Section Header */}
-          <div className="flex items-center gap-3 p-4 border-b border-gray-700 bg-gray-750">
-            <Users className="h-5 w-5 text-blue-400" />
-            <h3 className="text-lg font-semibold">سجل الحضور</h3>
-            <span className="ml-auto text-sm text-gray-400">
-              {coreData.students.filter(student => attendance[student.id]?.present).length} / {coreData.students.length} حاضر
-            </span>
-          </div>
+        <section className="border rounded-lg border-gray-700 bg-gray-800 overflow-hidden">
+          <header className="flex items-center gap-3 p-4 border-b border-gray-700 bg-gradient-to-r from-gray-800 to-gray-750">
+            <div className="flex items-center gap-3 flex-1">
+              <div className="bg-blue-900/30 p-2 rounded-lg">
+                <Users className="h-5 w-5 text-blue-400" />
+              </div>
+              <h3 className="text-lg font-semibold">سجل الحضور اليومي</h3>
+            </div>
+            <div className="flex items-center gap-2 px-4 py-1.5 bg-gray-900/50 rounded-lg">
+              <span className="text-sm font-medium text-blue-400">
+                {coreData.students.filter(student => attendance[student.id]?.present).length}
+              </span>
+              <span className="text-sm text-gray-400">
+                / {coreData.students.length} حاضر
+              </span>
+            </div>
+          </header>
 
-          {/* Attendance Cards Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
             {coreData.students.map((student) => (
               <AttendanceCard
@@ -831,17 +867,46 @@ const WeeklyMessageGenerator = () => {
               />
             ))}
           </div>
-        </div>
+        </section>
 
-        {/* Homework Section */}
-        <div className="mb-4 rounded-lg border border-gray-700 bg-gray-800 shadow-sm">
-          <HomeworkSection
-            students={coreData.students}
-            homework={homework}
-            onHomeworkChange={setHomework}
-            attendance={attendance}
-          />
-        </div>
+        {/* Previous Homework Grading */}
+        <section className="rounded-lg border border-gray-700 bg-gray-800 shadow-sm overflow-hidden">
+          <header className="flex items-center gap-3 p-4 border-b border-gray-700 bg-gradient-to-r from-gray-800 to-gray-750">
+            <div className="bg-purple-900/30 p-2 rounded-lg">
+              <GraduationCap className="h-5 w-5 text-purple-400" />
+            </div>
+            <h3 className="text-lg font-semibold">تقييم الواجبات السابقة</h3>
+          </header>
+
+          <div>
+            <OldHomeworkGradingSection
+              students={coreData.students}
+              types={homeworkGrades.types}
+              grades={homeworkGrades}
+              attendance={attendance}
+              onGradesChange={handleGradesChange}
+            />
+          </div>
+        </section>
+
+        {/* New Homework Assignment */}
+        <section className="rounded-lg border border-gray-700 bg-gray-800 shadow-sm overflow-hidden">
+          <header className="flex items-center gap-3 p-4 border-b border-gray-700 bg-gradient-to-r from-gray-800 to-gray-750">
+            <div className="bg-green-900/30 p-2 rounded-lg">
+              <Book className="h-5 w-5 text-green-400" />
+            </div>
+            <h3 className="text-lg font-semibold">تعيين واجبات جديدة</h3>
+          </header>
+
+          <div>
+            <HomeworkSection
+              students={coreData.students}
+              homework={homework}
+              onHomeworkChange={setHomework}
+              attendance={attendance}
+            />
+          </div>
+        </section>
 
         {/* Dynamic Sections */}
         {Object.entries(sections).map(([sectionKey, section]) => {
