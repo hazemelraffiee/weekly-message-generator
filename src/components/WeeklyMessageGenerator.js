@@ -13,7 +13,9 @@ import {
   GraduationCap,
   Clock,
   ChevronDown,
-  Book
+  Book,
+  Bell,
+  Settings
 } from 'lucide-react';
 
 import { useHydration } from '@/context/HydrationContext'
@@ -25,6 +27,8 @@ import AttendanceCard from '@/components/AttendanceCard';
 import OldHomeworkGradingSection from '@/components/OldHomeworkGradingSection';
 
 import HomeworkSection, { homeworkTypes } from '@/components/HomeworkSection';
+
+import Section from '@/components/Section';
 
 const useLocalStorage = (key, initialValue) => {
   const isHydrated = useHydration();
@@ -103,7 +107,7 @@ const WeeklyMessageGenerator = () => {
   });
 
   const [homeworkGrades, setHomeworkGrades] = useLocalStorage('homeworkGrades', {
-    types: {},
+    types: homeworkTypes,
     grades: {},
     comments: {}
   });
@@ -518,14 +522,14 @@ const WeeklyMessageGenerator = () => {
   const handleGradesChange = useCallback((newGrades) => {
     // Update the grades state
     setHomeworkGrades(prevGrades => ({
-      ...prevGrades, 
+      ...prevGrades,
       ...newGrades
     }));
-  
+
     // Save the updated grades to local storage
     localStorage.setItem('weeklyMessage_homeworkGrades', JSON.stringify({
       ...homeworkGrades,
-      ...newGrades  
+      ...newGrades
     }));
   }, [homeworkGrades]);
 
@@ -799,23 +803,19 @@ const WeeklyMessageGenerator = () => {
           </div>
         </div>
 
-        {/* Class Info Section */}
-        <div className="mb-4 rounded-lg border border-gray-700 bg-gray-800/50 shadow-sm backdrop-blur-sm">
-          {/* Section Header */}
-          <div className="flex items-center gap-3 p-6 border-b border-gray-700">
-            <h3 className="text-lg font-semibold flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-blue-400" />
-              تاريخ الحصة
-            </h3>
-          </div>
-
-          {/* Section Content */}
+        {/* Class Date Section */}
+        <Section
+          icon={Calendar}
+          iconColorClass="text-blue-400"
+          iconBgClass="bg-blue-900/30"
+          title="تاريخ الحصة"
+          className="mb-4"
+        >
           <div className="p-6 space-y-4">
             {/* Date Selection and Display */}
             <div className="space-y-3">
               {/* Date Input with Label */}
               <div className="space-y-2">
-
                 <input
                   type="date"
                   value={reportDate}
@@ -837,16 +837,16 @@ const WeeklyMessageGenerator = () => {
               </div>
             </div>
           </div>
-        </div>
+        </Section>
 
-        <section className="border rounded-lg border-gray-700 bg-gray-800 overflow-hidden">
-          <header className="flex items-center gap-3 p-4 border-b border-gray-700 bg-gradient-to-r from-gray-800 to-gray-750">
-            <div className="flex items-center gap-3 flex-1">
-              <div className="bg-blue-900/30 p-2 rounded-lg">
-                <Users className="h-5 w-5 text-blue-400" />
-              </div>
-              <h3 className="text-lg font-semibold">سجل الحضور اليومي</h3>
-            </div>
+        {/* Attendance Section */}
+        <Section
+          icon={Users}
+          iconColorClass="text-blue-400"
+          iconBgClass="bg-blue-900/30"
+          title="سجل الحضور اليومي"
+          className="mb-4"
+          rightElement={
             <div className="flex items-center gap-2 px-4 py-1.5 bg-gray-900/50 rounded-lg">
               <span className="text-sm font-medium text-blue-400">
                 {coreData.students.filter(student => attendance[student.id]?.present).length}
@@ -855,8 +855,8 @@ const WeeklyMessageGenerator = () => {
                 / {coreData.students.length} حاضر
               </span>
             </div>
-          </header>
-
+          }
+        >
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
             {coreData.students.map((student) => (
               <AttendanceCard
@@ -867,17 +867,18 @@ const WeeklyMessageGenerator = () => {
               />
             ))}
           </div>
-        </section>
+        </Section>
 
-        {/* Previous Homework Grading */}
-        <section className="rounded-lg border border-gray-700 bg-gray-800 shadow-sm overflow-hidden">
-          <header className="flex items-center gap-3 p-4 border-b border-gray-700 bg-gradient-to-r from-gray-800 to-gray-750">
-            <div className="bg-purple-900/30 p-2 rounded-lg">
-              <GraduationCap className="h-5 w-5 text-purple-400" />
-            </div>
-            <h3 className="text-lg font-semibold">تقييم الواجبات السابقة</h3>
-          </header>
-
+        {/* Previous Homework Grading Section */}
+        <Section
+          icon={GraduationCap}
+          iconColorClass="text-purple-400"
+          iconBgClass="bg-purple-900/30"
+          title="تقييم الواجبات السابقة"
+          className="mb-4"
+          collapsible={true}
+          defaultExpanded={false}
+        >
           <div>
             <OldHomeworkGradingSection
               students={coreData.students}
@@ -887,17 +888,18 @@ const WeeklyMessageGenerator = () => {
               onGradesChange={handleGradesChange}
             />
           </div>
-        </section>
+        </Section>
 
-        {/* New Homework Assignment */}
-        <section className="rounded-lg border border-gray-700 bg-gray-800 shadow-sm overflow-hidden">
-          <header className="flex items-center gap-3 p-4 border-b border-gray-700 bg-gradient-to-r from-gray-800 to-gray-750">
-            <div className="bg-green-900/30 p-2 rounded-lg">
-              <Book className="h-5 w-5 text-green-400" />
-            </div>
-            <h3 className="text-lg font-semibold">تعيين واجبات جديدة</h3>
-          </header>
-
+        {/* New Homework Assignment Section */}
+        <Section
+          icon={Book}
+          iconColorClass="text-green-400"
+          iconBgClass="bg-green-900/30"
+          title="تعيين واجبات جديدة"
+          className="mb-4"
+          collapsible={true}
+          defaultExpanded={false}
+        >
           <div>
             <HomeworkSection
               students={coreData.students}
@@ -906,32 +908,52 @@ const WeeklyMessageGenerator = () => {
               attendance={attendance}
             />
           </div>
-        </section>
+        </Section>
 
         {/* Dynamic Sections */}
         {Object.entries(sections).map(([sectionKey, section]) => {
-          const titles = {
-            weekStudy: 'ما تم دراسته',
-            notes: 'ملاحظات المعلم',
-            reminders: 'تذكيرات',
-            custom: 'قسم مخصص'
+          const sectionConfig = {
+            weekStudy: {
+              icon: Book,
+              title: 'ما تم دراسته',
+              iconColor: 'text-yellow-400',
+              bgColor: 'bg-yellow-900/30'
+            },
+            notes: {
+              icon: PenLine,
+              title: 'ملاحظات المعلم',
+              iconColor: 'text-blue-400',
+              bgColor: 'bg-blue-900/30'
+            },
+            reminders: {
+              icon: Bell,
+              title: 'تذكيرات',
+              iconColor: 'text-red-400',
+              bgColor: 'bg-red-900/30'
+            },
+            custom: {
+              icon: Settings,
+              title: 'قسم مخصص',
+              iconColor: 'text-gray-400',
+              bgColor: 'bg-gray-900/30'
+            }
           };
 
+          const config = sectionConfig[sectionKey];
+
           return (
-            <div key={sectionKey} className="mb-4 rounded-lg border border-gray-700 bg-gray-800 shadow-sm">
-              <div className="flex items-center gap-2 p-6 pb-2">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded border border-gray-600 bg-gray-700"
-                  checked={section.enabled}
-                  onChange={() => handleSectionToggle(sectionKey)}
-                />
-                <h3 className="text-lg font-semibold leading-none tracking-tight">
-                  {titles[sectionKey]}
-                </h3>
-              </div>
-              {section.enabled && (
-                <div className="p-6 pt-0 grid gap-4">
+            <Section
+              key={sectionKey}
+              icon={config.icon}
+              iconColorClass={config.iconColor}
+              iconBgClass={config.bgColor}
+              title={config.title}
+              className="mb-4"
+              collapsible={true}
+              defaultExpanded={false}
+            >
+              <div className="p-6 pt-4">
+                <div className="grid gap-4">
                   {section.fields.map((field) => (
                     <div key={field.id} className="grid gap-2">
                       <div className="flex gap-2">
@@ -967,8 +989,8 @@ const WeeklyMessageGenerator = () => {
                     إضافة حقل جديد
                   </button>
                 </div>
-              )}
-            </div>
+              </div>
+            </Section>
           );
         })}
 

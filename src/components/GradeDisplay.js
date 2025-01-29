@@ -70,7 +70,8 @@ const GradeDisplay = ({
   editable = false,
   onChange,
   min = 1.0,
-  max = 5.0
+  max = 5.0,
+  placeholder = 'اضغط لإضافة درجة'
 }) => {
   const [grade, setGrade] = useState(initialValue);
   const [isEditing, setIsEditing] = useState(false);
@@ -95,6 +96,15 @@ const GradeDisplay = ({
 
   const handleIncrease = () => {
     let newGrade;
+    if (grade == null) {
+      newGrade = min; // fallback if not German
+      if (gradingSystem === 'german') {
+        newGrade = 1.0; // best possible in German system
+      }
+      setGrade(newGrade);
+      onChange?.(newGrade);
+      return;
+    }
     if (gradingSystem === 'german') {
       // For German grades, "right" means a better grade (lower number)
       newGrade = getNextGermanGrade(grade, 'up');
@@ -107,6 +117,16 @@ const GradeDisplay = ({
 
   const handleDecrease = () => {
     let newGrade;
+    if (grade == null) {
+      newGrade = max; // fallback if not German
+      if (gradingSystem === 'german') {
+        newGrade = 6.0; // worst possible in German system
+      }
+      setGrade(newGrade);
+      onChange?.(newGrade);
+      setIsEditing(false);
+      return;
+    }
     if (gradingSystem === 'german') {
       // For German grades, "left" means a worse grade (higher number)
       newGrade = getNextGermanGrade(grade, 'down');
@@ -170,7 +190,7 @@ const GradeDisplay = ({
           ${isEditing ? 'border-x border-gray-700' : ''}`} // Added border when editing
         onClick={toggleEdit}
       >
-        {formatGrade(grade) || 'اضغط لإضافة درجة'}
+        {formatGrade(grade) || placeholder}
       </div>
 
       {/* Right (thumbs up) button - increases grade */}
