@@ -21,14 +21,11 @@ import {
 import { useHydration } from '@/context/HydrationContext'
 
 import { decodeData } from '@/components/LinkCreator'
-
 import AttendanceCard from '@/components/AttendanceCard';
-
 import OldHomeworkGradingSection from '@/components/OldHomeworkGradingSection';
-
 import HomeworkSection, { homeworkTypes } from '@/components/HomeworkSection';
-
 import Section from '@/components/Section';
+import ExportDataButton from '@/components/ExportDataButton';
 
 const useLocalStorage = (key, initialValue) => {
   const isHydrated = useHydration();
@@ -996,8 +993,8 @@ const WeeklyMessageGenerator = () => {
 
         {/* Footer Actions */}
         <div className="relative">
-          <div className="mt-8 flex justify-center">
-            <div className="relative w-full max-w-md">
+          <div className="mt-8 flex flex-col md:flex-row justify-center gap-4">
+            <div className="relative w-full md:w-auto">
               {isOpen && (
                 <div className="absolute bottom-full right-0 mb-1 w-full bg-gray-900 border border-gray-700 rounded-lg shadow-lg overflow-hidden z-10">
                   <button
@@ -1025,7 +1022,7 @@ const WeeklyMessageGenerator = () => {
                 onClick={() => setIsOpen(!isOpen)}
                 className={`
           inline-flex items-center justify-center rounded-md text-sm font-medium 
-          h-12 px-6 py-2 transition-colors text-white group w-full
+          h-12 px-6 py-2 transition-colors text-white group w-full md:w-auto
           ${copyStatus === 'copied'
                     ? 'bg-green-600 hover:bg-green-700'
                     : 'bg-blue-600 hover:bg-blue-700'}
@@ -1045,6 +1042,19 @@ const WeeklyMessageGenerator = () => {
                 </div>
               </button>
             </div>
+
+            <ExportDataButton
+              coreData={coreData}
+              reportDate={reportDate}
+              formattedDate={formattedDate}
+              attendance={attendance}
+              homework={homework}
+              homeworkGrades={homeworkGrades}
+              onError={(error) => {
+                // Handle error - you might want to show a toast notification or alert
+                console.error('Export failed:', error);
+              }}
+            />
           </div>
         </div>
       </div>
