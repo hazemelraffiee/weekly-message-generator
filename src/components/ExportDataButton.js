@@ -1,30 +1,18 @@
 import React from 'react';
 import { Download, Check, Loader2 } from 'lucide-react';
+import pako from 'pako';
 
 // Helper function to compress data
-async function compressData(jsonString) {
-  // First try the modern compression API
-  if (typeof CompressionStream === 'function') {
-    try {
-      const textEncoder = new TextEncoder();
-      const byteArray = textEncoder.encode(jsonString);
-      
-      const compressedStream = new Blob([byteArray])
-        .stream()
-        .pipeThrough(new CompressionStream('deflate'));
-      
-      const compressedArray = await new Response(compressedStream)
-        .arrayBuffer()
-        .then(buffer => new Uint8Array(buffer));
-      
-      return btoa(String.fromCharCode.apply(null, compressedArray));
-    } catch (e) {
-      console.log('Modern compression failed, falling back to pako');
-    }
-  }
+function compressData(jsonString) {
+  // Always use pako for consistent compression across browsers
+  const compressed = pako.deflate(jsonString, {
+    level: 9,               // Maximum compression
+    windowBits: 15,         // Default window size
+    memLevel: 8,           // Default memory level
+    strategy: 0            // Default strategy
+  });
   
-  // Fallback to pako
-  const compressed = pako.deflate(jsonString);
+  // Convert to base64
   return btoa(String.fromCharCode.apply(null, compressed));
 }
 
@@ -131,21 +119,21 @@ const ExportDataButton = ({
         return (
           <div className="flex items-center gap-2">
             <Loader2 className="h-5 w-5 animate-spin" />
-            <span className="font-medium">جارٍ التصدير...</span>
+            <span className="font-medium">جارٍ النسخ...</span>
           </div>
         );
       case 'success':
         return (
           <div className="flex items-center gap-2">
             <Check className="h-5 w-5 transition-transform group-hover:scale-110" />
-            <span className="font-medium">تم التصدير</span>
+            <span className="font-medium">تم النسخ</span>
           </div>
         );
       default:
         return (
           <div className="flex items-center gap-2">
             <Download className="h-5 w-5 transition-transform group-hover:scale-110" />
-            <span className="font-medium">تصدير البيانات</span>
+            <span className="font-medium">نسخ تقرير الإشراف</span>
           </div>
         );
     }

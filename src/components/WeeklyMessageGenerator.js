@@ -27,6 +27,14 @@ import HomeworkSection, { homeworkTypes } from '@/components/HomeworkSection';
 import Section from '@/components/Section';
 import ExportDataButton from '@/components/ExportDataButton';
 
+const PILOT_CLASSES = [
+  'الفوج الرابع'
+];
+
+const isPilotClass = (className) => {
+  return PILOT_CLASSES.includes(className);
+};
+
 const useLocalStorage = (key, initialValue) => {
   const isHydrated = useHydration();
   const [state, setState] = useState(() => {
@@ -843,6 +851,7 @@ const WeeklyMessageGenerator = () => {
           iconBgClass="bg-blue-900/30"
           title="سجل الحضور اليومي"
           className="mb-4"
+          collapsible={true}
           rightElement={
             <div className="flex items-center gap-2 px-4 py-1.5 bg-gray-900/50 rounded-lg">
               <span className="text-sm font-medium text-blue-400">
@@ -867,25 +876,27 @@ const WeeklyMessageGenerator = () => {
         </Section>
 
         {/* Previous Homework Grading Section */}
-        <Section
-          icon={GraduationCap}
-          iconColorClass="text-purple-400"
-          iconBgClass="bg-purple-900/30"
-          title="تقييم الواجبات السابقة"
-          className="mb-4"
-          collapsible={true}
-          defaultExpanded={false}
-        >
-          <div>
-            <OldHomeworkGradingSection
-              students={coreData.students}
-              types={homeworkGrades.types}
-              grades={homeworkGrades}
-              attendance={attendance}
-              onGradesChange={handleGradesChange}
-            />
-          </div>
-        </Section>
+        {isPilotClass(coreData.className) && (
+          <Section
+            icon={GraduationCap}
+            iconColorClass="text-purple-400"
+            iconBgClass="bg-purple-900/30"
+            title="تقييم الواجبات السابقة"
+            className="mb-4"
+            collapsible={true}
+            defaultExpanded={false}
+          >
+            <div>
+              <OldHomeworkGradingSection
+                students={coreData.students}
+                types={homeworkGrades.types}
+                grades={homeworkGrades}
+                attendance={attendance}
+                onGradesChange={handleGradesChange}
+              />
+            </div>
+          </Section>
+        )}
 
         {/* New Homework Assignment Section */}
         <Section
@@ -1043,18 +1054,19 @@ const WeeklyMessageGenerator = () => {
               </button>
             </div>
 
-            <ExportDataButton
-              coreData={coreData}
-              reportDate={reportDate}
-              formattedDate={formattedDate}
-              attendance={attendance}
-              homework={homework}
-              homeworkGrades={homeworkGrades}
-              onError={(error) => {
-                // Handle error - you might want to show a toast notification or alert
-                console.error('Export failed:', error);
-              }}
-            />
+            {isPilotClass(coreData.className) && (
+              <ExportDataButton
+                coreData={coreData}
+                reportDate={reportDate}
+                formattedDate={formattedDate}
+                attendance={attendance}
+                homework={homework}
+                homeworkGrades={homeworkGrades}
+                onError={(error) => {
+                  console.error('Export failed:', error);
+                }}
+              />
+            )}
           </div>
         </div>
       </div>
