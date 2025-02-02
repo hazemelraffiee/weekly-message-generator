@@ -83,35 +83,64 @@ def decode_data(encoded_string: str) -> Dict[str, Any]:
     except Exception as e:
         raise ValueError(f"Decoding failed: {str(e)}")
 
-# Example usage:
-if __name__ == "__main__":
+def encode_data(data: Dict[str, Any]) -> str:
+    """
+    Encodes a dictionary into a compressed and base64-encoded string.
+    
+    Args:
+        data: The dictionary to encode.
+        
+    Returns:
+        A base64-encoded, compressed string.
+        
+    Raises:
+        ValueError: If the data cannot be serialized properly.
+    """
+    try:
+        # Convert dictionary to JSON string
+        json_str = json.dumps(data, ensure_ascii=False, separators=(',', ':'))
+        
+        # Compress the JSON string using zlib with matching parameters
+        compressed_data = zlib.compress(json_str.encode('utf-8'), level=9)
+
+        # Encode the compressed data in base64
+        encoded_string = base64.b64encode(compressed_data).decode('utf-8')
+
+        return encoded_string
+
+    except (TypeError, ValueError) as e:
+        raise ValueError(f"Encoding failed: {str(e)}")
+
+def _test_decoder():
     # Example encoded string (this would normally come from the clipboard)
     example_encoded = """
-فصل: الفوج الثاني
-التاريخ: الأربعاء، ٣٠  رجب  ١٤٤٦ هـ الموافق الأربعاء، 29  يناير  2025 م
+فصل: الفوج الرابع
+التاريخ: السبت، ٣  شعبان  ١٤٤٦ هـ الموافق السبت، 1  فبراير  2025 م
 ---
-eJyNUt2K00AUfpXhXKewKWxg8wTe6I2X0ovQjG6xTZZm6iIlYEtTQ/AhXLqYtG4MsStan+Q7byOTpCJrf3I7Z76/c74pjaRyXEc5ZE8p6F/7/vCFM5JkE3YcoRTIeCmQ8gLf8BMpMtERyHnBc6TYCE445qj+sEWGDRnUHzpBsGdJecEzjvFQ//mKlJeckEGuo6QWHTu3ZFP3onvZuTA73Ssy6LU/HjlKSbchwAolMuyQ4g6fBK/4sxAo8YBMCL7je77nL4I/8odKhCOOkfKM5+IAunsltOslUk5QCqGVBUcUhgZpUc91vH7lDN85QYpCIKtodeItR5zo4c1YBtJTZKvxRBo0dJR8PvAmSgZkE4UGYYWcI43WHgqN5nk75A7ZHldqkv0FHivPWUt5XmIrsELGcb2WGTYcI28F52jvfscxCqxbOq87s+UlinYIveNCIK/LdQ5jXuozXfsjeeuP3+rfThAM3ngj6amA7FdTUu9vqt7lPMMvXUbfUxVb3aRcXwFrMhqgdF+qiduge6Hxl0AHQYoH7LAWPEepN18BnzD+RopHTo5xnjpEL+yFhs77buBPgmf/pGrsny4hmXS0ZvXsbJHIov+uVr0duH8jd7xWjaYma2b4UQkVldtK6um5yWradnDZZ/JbJ/Jb7fKbB/KbR/Jb5/JbJ/ObB/ObFIbhH4tJ2F8=
+eNrFV1Fq20AQvcqy31axHUohJ+hP+9PPUoKIlSbUtoIlN5RgaIzlpqaHSGI7coJd13FK6p5k9zZ9s1JMA9qVKispgSCzs/Nm376ZnTnmDce3a7Zv8+1j7u3uu279td1w+DYXKxmIBRMT2WcilD3xXdyJUEyYxcRM9mQXP66ZHMhTGUQGSzER17zEd+u25917wYI8kadiGtksyIVYwQqgDoG27CPYVcvV51a5apUrWNpzWw3b951a7CDyLL4xOWRM3IoVfoYIi8lzOcLfJZNf5GcFIANghUDssgc7KzA+wTfw5QDHYgTIZMA7Jb7v2DWntaPC3mmmxR1bR+E/RXjERLNmN3cVXWIIH2QS71+JuRzQwmHL8Zymz7f9Vtsp8Trie3XQbPuOhzDJj7qqvliuD4SfGXcGuPFAzJkYiyU+QmhjIHtxCIhmntXNTyIn2ndDnxkDUJTOYwbFlBAZYiA6MzpYwngQC5XioPhxqNTd1bJiDtuC+zwYRmQ82Lln1z3dmacq2PUB8In/abgVhRtAOH3sU8zdQTZfM8Ubp+762ujmwcBJxpBja3ZfAWZ0x7KfBr1V7lAyuQ3nyG19IGvk08H7ZgMbsPz2mPufDlXOzKD1X1Qo3KavvPE4NwIkwwwnvqLUObPwbwizyI1Te+O3a7EvjZjfdUprFIodSp2Cb7jrigVucSKuUmAvCfSsGFAqGCTVRFDYhEjdnlrMB5aJR/OBEgS2OYfnlhwXAWjgT/yG1S0Wr3ICabgTP+CXTqnetgs5suRQhlqMpHqWh7+HsODvQi/8fwM1cTjDW7XIDaNTH71v3ejA6iCXeoTkyphLgF2yLAzJnLk3EFdvEyyd+NSFMDkxpaz+JcslvBgSNxUWB6ihT/YhjhlTCukhOUOlq1D1jPmRdTrsRm/gSIYoR9qClNxO5ZcgFY2hBdSCAE35O6bnQXWaEaXUP1LHmhs504NiVqepUdv8ZRkZZJoLuUh6swaQkv3nckxlU/9kp/biGxUCKgUYWx4B3cT1FO1lIYjZekvL2FcmNr/5SS0MyfwqUSVdaNVpQAMe9fUfD9y29/Kv7l13ymhJM9Vwmt81k6ZaM0xivPJsi2umHl7l2gFyjZk8tcDtC542Q0Y+Msy5KhDNEA4n0ciXeGePx1tVHdDA21NxE3szsRMn6P8RUSVFRE/GQ6fzB2/ZTUE=
 """
     
     try:
         decoded_data = decode_data(example_encoded)
         
-        # Print the decoded data structure
-        print("Decoded Data:")
-        print(json.dumps(decoded_data, ensure_ascii=False, indent=2))
-        
-        # Access specific fields
-        if 'metadata' in decoded_data:
-            print("\nMetadata:")
-            print(f"Class: {decoded_data['metadata'].get('className')}")
-            print(f"Date: {decoded_data['metadata'].get('date', {}).get('formatted')}")
-        
-        if 'attendance' in decoded_data:
-            print("\nAttendance:")
-            for student, data in decoded_data['attendance'].items():
-                status = "حاضر" if data['present'] else "غائب"
-                late = f" (متأخر {data['lateMinutes']} دقيقة)" if data['present'] and data['lateMinutes'] else ""
-                print(f"{student}: {status}{late}")
+        with open('decoded_data.json', 'w', encoding="utf-8") as f:
+            json.dump(decoded_data, f, ensure_ascii=False, indent=2)
                 
     except ValueError as e:
         print(f"Error decoding data: {e}")
+
+def _test_encoder():
+    # Read the JSON data from the file
+    with open('decoded_data.json', 'r', encoding="utf-8") as f:
+        decoded_data = json.load(f)
+
+    # Encode the loaded JSON data
+    encoded_string = encode_data(decoded_data)
+
+    # Print the encoded string
+    print(encoded_string)
+
+
+# Example usage:
+if __name__ == "__main__":
+    _test_encoder()
