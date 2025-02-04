@@ -22,7 +22,7 @@ export const homeworkTypes = {
   }
 };
 
-const allHomeworkTypes = {
+export const allHomeworkTypes = {
   ...homeworkTypes,
   custom: {
     id: 'custom',

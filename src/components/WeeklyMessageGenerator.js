@@ -23,7 +23,7 @@ import { useHydration } from '@/context/HydrationContext'
 import { decodeData } from '@/components/LinkCreator'
 import AttendanceCard from '@/components/AttendanceCard';
 import OldHomeworkGradingSection from '@/components/OldHomeworkGradingSection';
-import HomeworkSection, { homeworkTypes } from '@/components/HomeworkSection';
+import HomeworkSection, { allHomeworkTypes, homeworkTypes } from '@/components/HomeworkSection';
 import Section from '@/components/Section';
 import ExportDataButton from '@/components/ExportDataButton';
 
@@ -384,7 +384,7 @@ const WeeklyMessageGenerator = () => {
       if (generalHomework.length > 0) {
         message += '*الواجبات العامة:*\n';
         generalHomework.forEach(hw => {
-          const typeLabel = homeworkTypes[hw.type].label;
+          const typeLabel = allHomeworkTypes[hw.type].label;
           message += `• ${typeLabel}: ${hw.content}\n`;
         });
         message += '\n';
@@ -407,7 +407,7 @@ const WeeklyMessageGenerator = () => {
           if (student) {
             message += `\n👤 *${student.name}:*\n`;
             assignments.forEach(hw => {
-              const typeLabel = homeworkTypes[hw.type].label;
+              const typeLabel = allHomeworkTypes[hw.type].label;
               message += `• ${typeLabel}: ${hw.content}\n`;
             });
           }
@@ -426,7 +426,7 @@ const WeeklyMessageGenerator = () => {
       });
 
       Object.entries(groupedByType).forEach(([type, assignments]) => {
-        const typeLabel = homeworkTypes[type].label;
+        const typeLabel = allHomeworkTypes[type].label;
         message += `*${typeLabel}:*\n`;
 
         assignments.forEach(hw => {
