@@ -1,6 +1,7 @@
 import React from 'react';
 import { Download, Check, Loader2 } from 'lucide-react';
 import pako from 'pako';
+import { homeworkTypes } from './HomeworkSection';
 
 // Helper function to compress data
 function compressData(jsonString) {
@@ -28,16 +29,14 @@ const ExportDataButton = ({
   const [exportStatus, setExportStatus] = React.useState('initial'); // 'initial', 'processing', 'success'
 
   const prepareExportData = () => {
-    // Convert studentId-based data to student name-based data
     const attendanceByName = {};
     const gradesOrganizedByType = {};
     
-    // Process attendance data
-    Object.entries(attendance).forEach(([studentId, data]) => {
-      const student = coreData.students.find(s => s.id === studentId);
-      if (student) {
-        attendanceByName[student.name] = data;
-      }
+    // Process attendance data for ALL students
+    coreData.students.forEach(student => {
+      // Get attendance data if it exists, otherwise mark as absent
+      const attendanceData = attendance[student.id] || { present: false };
+      attendanceByName[student.name] = attendanceData;
     });
 
     // Process homework grades

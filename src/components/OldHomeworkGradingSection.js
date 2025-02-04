@@ -92,11 +92,7 @@ const CommentCell = ({ studentId, comment, onSaveComment, onCancel, placeholder 
 };
 
 const OldHomeworkGradingSection = ({ students, types, grades, attendance, onGradesChange }) => {
-  const [isAddingType, setIsAddingType] = useState(false);
-  const [editingCell, setEditingCell] = useState(null);
-  const [deletingType, setDeletingType] = useState(null);
   const [openCommentStudentId, setOpenCommentStudentId] = useState(null);
-  const [newTypeLabel, setNewTypeLabel] = useState("");
 
   const handleGrade = (studentId, typeId, value) => {
     const newGrades = { ...grades.grades };
@@ -116,7 +112,6 @@ const OldHomeworkGradingSection = ({ students, types, grades, attendance, onGrad
       grades: newGrades,
       comments: grades.comments
     });
-    setEditingCell(null);
   };
 
   const handleComment = (studentId, newComment) => {
@@ -145,8 +140,6 @@ const OldHomeworkGradingSection = ({ students, types, grades, attendance, onGrad
           grades: grades.grades,
           comments: grades.comments
         });
-        setIsAddingType(false);
-        setNewTypeLabel("");
         break;
       case 'remove':
         delete newTypes[typeData];
@@ -164,7 +157,6 @@ const OldHomeworkGradingSection = ({ students, types, grades, attendance, onGrad
           grades: newGrades,
           comments: grades.comments
         });
-        setDeletingType(null);
         break;
       case 'reset':
         onGradesChange({
@@ -186,7 +178,10 @@ const OldHomeworkGradingSection = ({ students, types, grades, attendance, onGrad
           min={type.minGrade || 1.0}
           max={type.maxGrade || 5.0}
           onChange={(value) => handleGrade(student.id, typeId, value)}
-          placeholder={student.name.trim().split(' ')[0]}
+          placeholder={(() => {
+            const names = student.name.trim().split(' ');
+            return names[0] === 'عبد' && names[1] ? `${names[0]} ${names[1]}` : names[0];
+          })()}
         />
       </div>
     );
@@ -200,81 +195,14 @@ const OldHomeworkGradingSection = ({ students, types, grades, attendance, onGrad
             <thead>
               <tr>
                 <th className="px-4 py-3 bg-gray-800/50 border-b border-gray-700 relative">
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="items-center justify-between gap-2">
                     <span>الطالب</span>
-                    <button
-                      onClick={() => setIsAddingType(true)}
-                      className={`${styles.button.base} ${styles.button.ghost} p-1 hover:bg-gray-800/50`}
-                    >
-                      <Plus className="h-4 w-4" />
-                    </button>
-                    {isAddingType && (
-                      <div className="absolute top-full right-0 mt-1 bg-gray-800 rounded-md shadow-lg border border-gray-700 z-10 min-w-[200px]" style={{ right: 'auto' }}>
-                        {!newTypeLabel ? (
-                          <div className="p-2 flex flex-col gap-2">
-                            <button
-                              onClick={() => setNewTypeLabel(" ")}
-                              className={`${styles.button.base} ${styles.button.ghost} text-right w-full hover:bg-gray-700/50`}
-                            >
-                              إضافة نوع جديد
-                            </button>
-                            <button
-                              className={`${styles.button.base} ${styles.button.ghost} text-right w-full hover:bg-gray-700/50`}
-                              onClick={() => {
-                                handleType('reset');
-                                setIsAddingType(false);
-                              }}
-                            >
-                              إعادة تعيين إلى الافتراضي
-                            </button>
-                          </div>
-                        ) : (
-                          <form onSubmit={(e) => {
-                            e.preventDefault();
-                            if (newTypeLabel.trim()) {
-                              handleType('add', { label: newTypeLabel.trim(), style: 'bg-gray-950/50 text-gray-400' });
-                            }
-                          }} className="p-2 flex items-center gap-2">
-                            <input
-                              autoFocus
-                              value={newTypeLabel}
-                              onChange={(e) => setNewTypeLabel(e.target.value)}
-                              className={styles.input + " w-full px-2 py-1 text-sm"}
-                              placeholder="نوع جديد..."
-                            />
-                            <button type="submit" className={`${styles.button.base} ${styles.button.primary} p-1`}>
-                              <Check className="h-4 w-4" />
-                            </button>
-                            <button type="button" onClick={() => {
-                              setNewTypeLabel("");
-                              setIsAddingType(false);
-                            }} className={`${styles.button.base} ${styles.button.ghost} p-1`}>
-                              <X className="h-4 w-4" />
-                            </button>
-                          </form>
-                        )}
-                      </div>
-                    )}
                   </div>
                 </th>
                 {Object.entries(types).map(([typeId, type]) => (
                   <th key={typeId} className={`px-4 py-3 bg-gray-800/50 border-b border-gray-700 ${type.style}`}>
-                    <div className="flex items-center justify-between gap-2">
+                    <div className="items-center justify-between gap-2">
                       <span>{type.label}</span>
-                      {deletingType === typeId ? (
-                        <div className="flex items-center gap-2">
-                          <button onClick={() => handleType('remove', typeId)} className={`${styles.button.base} ${styles.button.danger} p-1`}>
-                            <Check className="h-4 w-4" />
-                          </button>
-                          <button onClick={() => setDeletingType(null)} className={`${styles.button.base} ${styles.button.ghost} p-1`}>
-                            <X className="h-4 w-4" />
-                          </button>
-                        </div>
-                      ) : (
-                        <button onClick={() => setDeletingType(typeId)} className={`${styles.button.base} ${styles.button.ghost} p-1 hover:bg-red-900/50`}>
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      )}
                     </div>
                   </th>
                 ))}

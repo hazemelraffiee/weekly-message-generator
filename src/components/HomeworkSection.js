@@ -19,7 +19,11 @@ export const homeworkTypes = {
     label: 'مراجعة بعيدة',
     template: '',
     style: 'bg-purple-950/50 text-purple-400 hover:bg-purple-900/50'
-  },
+  }
+};
+
+const allHomeworkTypes = {
+  ...homeworkTypes,
   custom: {
     id: 'custom',
     label: 'واجب آخر',
@@ -88,7 +92,7 @@ const HomeworkTypeButton = ({ type, config, onAddForAll, onAddForGroup }) => {
 
 const HomeworkTypeButtons = ({ onAdd, onAddForGroup }) => (
   <div className="flex flex-wrap gap-2">
-    {Object.entries(homeworkTypes).map(([type, config]) => (
+    {Object.entries(allHomeworkTypes).map(([type, config]) => (
       <HomeworkTypeButton
         key={type}
         type={type}
@@ -131,8 +135,8 @@ const HomeworkItem = ({
           }`}
         id={id}
       >
-        <div className={`${homeworkTypes[type].style} flex-1`}>
-          <span className="font-bold ml-2">{homeworkTypes[type].label}:</span>
+        <div className={`${allHomeworkTypes[type].style} flex-1`}>
+          <span className="font-bold ml-2">{allHomeworkTypes[type].label}:</span>
           {isEditing ? (
             <input
               type="text"
@@ -329,7 +333,7 @@ const HomeworkSection = ({ students, homework, onHomeworkChange, attendance = {}
     const newHomework = {
       id: Date.now().toString(),
       type,
-      content: homeworkTypes[type].template || '',
+      content: allHomeworkTypes[type].template || '',
       assignedStudents: selectedStudents,
       isSpecific
     };
@@ -474,7 +478,7 @@ const HomeworkSection = ({ students, homework, onHomeworkChange, attendance = {}
             <div className="mb-6">
               <h3 className="font-bold mb-2 text-gray-100">الواجبات الخاصة</h3>
               <div className="flex flex-wrap gap-2 mb-4">
-                {Object.entries(homeworkTypes).map(([type, config]) => (
+                {Object.entries(allHomeworkTypes).map(([type, config]) => (
                   <button
                     key={type}
                     onClick={() => addHomework(type, [student.id], true)}

@@ -4,7 +4,7 @@ import os
 from datetime import datetime
 from typing import Optional
 import json
-from decoder import decode_data
+from python.src.encoder_decoder import decode_data
 from xlsxparser import update_student_records
 
 class ExcelUpdaterUI:
