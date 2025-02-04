@@ -147,8 +147,8 @@ const WeeklyMessageGenerator = () => {
     });
     gregorianDate = gregorianDate.trim() + ' م';
 
-    // Format Hijri date
-    const hijriFormatter = new Intl.DateTimeFormat('ar-SA-u-ca-islamic', options);
+    // Format Hijri date using Umm al-Qura calendar
+    const hijriFormatter = new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura', options);
     const hijriParts = hijriFormatter.formatToParts(date);
     let hijriDate = '';
 
