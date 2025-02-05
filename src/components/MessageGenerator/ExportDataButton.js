@@ -1,21 +1,6 @@
 import React from 'react';
 import { Download, Check, Loader2 } from 'lucide-react';
-import pako from 'pako';
-import { homeworkTypes } from './HomeworkSection';
-
-// Helper function to compress data
-function compressData(jsonString) {
-  // Always use pako for consistent compression across browsers
-  const compressed = pako.deflate(jsonString, {
-    level: 9,               // Maximum compression
-    windowBits: 15,         // Default window size
-    memLevel: 8,           // Default memory level
-    strategy: 0            // Default strategy
-  });
-  
-  // Convert to base64
-  return btoa(String.fromCharCode.apply(null, compressed));
-}
+import { compress } from '@/utils/dataUtils';
 
 const ExportDataButton = ({ 
   coreData, 
@@ -40,7 +25,7 @@ const ExportDataButton = ({
     });
 
     // Process homework grades
-    Object.entries(homeworkGrades.types).forEach(([typeId, typeInfo]) => {
+    Object.entries(coreData.homeworkTypes).forEach(([typeId, typeInfo]) => {
       gradesOrganizedByType[typeInfo.label] = {};
       
       Object.entries(homeworkGrades.grades).forEach(([studentId, grades]) => {
@@ -89,7 +74,7 @@ const ExportDataButton = ({
       
       // Convert to JSON and compress
       const jsonString = JSON.stringify(exportData);
-      const compressedData = await compressData(jsonString);
+      const compressedData = await compress(jsonString);
       
       // Prepare a readable header with class and date information
       const header = `فصل: ${coreData.className}\n`;

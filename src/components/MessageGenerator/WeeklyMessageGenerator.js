@@ -20,12 +20,13 @@ import {
 
 import { useHydration } from '@/context/HydrationContext'
 
-import { decodeData, DEFAULT_HOMEWORK_TYPES } from '@/components/LinkCreator/utils'
+import { DEFAULT_HOMEWORK_TYPES } from '@/components/LinkCreator/utils'
 import AttendanceCard from '@/components/MessageGenerator/AttendanceCard';
 import OldHomeworkGradingSection from '@/components/MessageGenerator/OldHomeworkGradingSection';
 import HomeworkSection from '@/components/MessageGenerator/HomeworkSection';
 import Section from '@/components/MessageGenerator/Section';
 import ExportDataButton from '@/components/MessageGenerator/ExportDataButton';
+import { decompress } from '@/utils/dataUtils';
 
 const PILOT_CLASSES = [
   'الفوج الرابع'
@@ -566,24 +567,38 @@ const WeeklyMessageGenerator = () => {
   
     if (encodedData) {
       try {
-        const decodedData = decodeData(encodedData);
+        // Try new format first (decompress)
+        let decodedData;
+        try {
+          decodedData = decompress(encodedData);
+        } catch (e) {
+          console.error('Error decoding data:', e);
+        }
+  
         if (decodedData && decodedData.className && Array.isArray(decodedData.students)) {
-          // Use provided homework types or fallback to defaults if none provided
           let homeworkTypesObj = DEFAULT_HOMEWORK_TYPES;
   
-          if (decodedData.homeworkTypes && typeof decodedData.homeworkTypes === 'object') {
-            // Process and validate homework types without merging defaults
-            homeworkTypesObj = Object.entries(decodedData.homeworkTypes).reduce((acc, [id, type]) => {
-              if (type && type.id && type.label && type.style) {
+          if (decodedData.homeworkTypes) {
+            // Check if it's the simplified format (where values are color strings)
+            const isSimplifiedFormat = Object.values(decodedData.homeworkTypes).every(
+              value => typeof value === 'string'
+            );
+  
+            if (isSimplifiedFormat) {
+              // Convert simplified format to full format
+              homeworkTypesObj = Object.entries(decodedData.homeworkTypes).reduce((acc, [label, color]) => {
+                const id = label.toLowerCase().replace(/\s+/g, '-');
                 acc[id] = {
-                  id: type.id,
-                  label: type.label,
-                  template: type.template || '',
-                  style: type.style
+                  id,
+                  label,
+                  template: '',
+                  style: `bg-${color}-950/50 text-${color}-400 hover:bg-${color}-900/50`
                 };
-              }
-              return acc;
-            }, {});
+                return acc;
+              }, {});
+            } else {
+              homeworkTypesObj = decodedData.homeworkTypes;
+            }
           }
   
           setCoreData({
@@ -597,7 +612,6 @@ const WeeklyMessageGenerator = () => {
             homeworkTypes: homeworkTypesObj
           });
   
-          // Initialize homeworkGrades with the types
           setHomeworkGrades(prev => ({
             ...prev,
             types: homeworkTypesObj
@@ -607,7 +621,6 @@ const WeeklyMessageGenerator = () => {
         console.error('Error decoding data:', error);
       }
     } else {
-      // If no data is provided, initialize with default homework types
       setCoreData(prev => ({
         ...prev,
         homeworkTypes: DEFAULT_HOMEWORK_TYPES

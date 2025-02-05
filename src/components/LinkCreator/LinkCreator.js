@@ -3,7 +3,8 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Plus, Trash2, Link2, Check, Loader2, Upload, X, Pencil } from 'lucide-react';
 
-import { decodeData, encodeData, useLocalStorage } from '@/components/LinkCreator/utils';
+import { decodeData, useLocalStorage, DEFAULT_HOMEWORK_TYPES } from '@/components/LinkCreator/utils';
+import { compress, decompress } from '@/utils/dataUtils';
 import { HomeworkTypesCard } from '@/components/LinkCreator/HomeworkTypesCard';
 
 const InputField = ({ label, value, onChange, placeholder, onKeyDown }) => (
@@ -292,14 +293,37 @@ const LinkCreator = () => {
   const handleLoadLink = useCallback(async () => {
     setLoadingLink(true);
     setError('');
-
+  
     try {
-      const decodedData = decodeData(linkInput);
-
+      // Extract data parameter if it's a full URL
+      const dataParam = linkInput.includes('?data=')
+        ? linkInput.split('?data=')[1]
+        : linkInput;
+  
+      // Try new format first (decompress)
+      let decodedData;
+      try {
+        const decompressed = decompress(dataParam);
+        if (decompressed) {
+          decodedData = decompressed;
+        }
+      } catch (e) {
+        console.log('New format decode failed, trying legacy format...', e);
+      }
+  
+      // If new format fails, try legacy format (decode)
+      if (!decodedData) {
+        try {
+          decodedData = decodeData(dataParam);
+        } catch (e) {
+          console.log('Legacy format decode failed', e);
+        }
+      }
+  
       if (!decodedData) {
         throw new Error('الرابط غير صالح');
       }
-
+  
       setSchoolName(decodedData.schoolName || '');
       setClassName(decodedData.className || '');
       setStudents(decodedData.students.map((name, index) => ({
@@ -310,14 +334,40 @@ const LinkCreator = () => {
         id: `existing-${index}`,
         name
       })));
-
+  
       // Handle homework types
-      if (decodedData.homeworkTypes && Object.keys(decodedData.homeworkTypes).length > 0) {
-        setHomeworkTypes(decodedData.homeworkTypes);
-        // Since we have custom homework types, we should disable default types
-        setUseDefaultTypes(false);
+      if (decodedData.homeworkTypes) {
+        // Check if it's the new simplified format (where values are color strings)
+        const isSimplifiedFormat = Object.values(decodedData.homeworkTypes).every(
+          value => typeof value === 'string'
+        );
+  
+        if (isSimplifiedFormat) {
+          // Convert simplified format to full format
+          const reconstructedTypes = Object.entries(decodedData.homeworkTypes).reduce((acc, [label, color]) => {
+            const id = label.toLowerCase().replace(/\s+/g, '-');
+            acc[id] = {
+              id,
+              label,
+              template: '',
+              style: `bg-${color}-950/50 text-${color}-400 hover:bg-${color}-900/50`
+            };
+            return acc;
+          }, {});
+          
+          setHomeworkTypes(reconstructedTypes);
+          setUseDefaultTypes(false);
+        } else if (Object.keys(decodedData.homeworkTypes).length > 0) {
+          // Handle legacy format (full homework types objects)
+          setHomeworkTypes(decodedData.homeworkTypes);
+          setUseDefaultTypes(false);
+        } else {
+          // Empty or invalid homework types, use defaults
+          setHomeworkTypes(DEFAULT_HOMEWORK_TYPES);
+          setUseDefaultTypes(true);
+        }
       } else {
-        // If no homework types in the link or empty object, use defaults
+        // No homework types in data, use defaults
         setHomeworkTypes(DEFAULT_HOMEWORK_TYPES);
         setUseDefaultTypes(true);
       }
@@ -326,11 +376,12 @@ const LinkCreator = () => {
       setLinkInput('');
       showNotification('تم تحميل البيانات بنجاح');
     } catch (error) {
+      console.error('Load error:', error);
       setError('حدث خطأ أثناء تحميل البيانات. يرجى التحقق من الرابط والمحاولة مرة أخرى.');
     } finally {
       setLoadingLink(false);
     }
-  }, [linkInput, setSchoolName, setClassName, setHomeworkTypes, showNotification]);
+  }, [linkInput, setSchoolName, setClassName, showNotification]);
 
   // Form validation
   const isFormValid = schoolName.trim() && className.trim() && students.length > 0;
@@ -342,17 +393,33 @@ const LinkCreator = () => {
   }, [showNotification]);
 
   const handleGenerateAndCopyUrl = useCallback(async () => {
+    // Extract color from style string (e.g., "bg-blue-950/50 text-blue-400..." -> "blue")
+    const extractColor = (style) => {
+      const match = style.match(/bg-(\w+)-950/);
+      return match ? match[1] : null;
+    };
+  
+    // Transform homework types to simplified format
+    const simplifiedHomeworkTypes = Object.values(homeworkTypes).reduce((acc, type) => {
+      const color = extractColor(type.style);
+      if (color) {
+        acc[type.label] = color;
+      }
+      return acc;
+    }, {});
+  
     const data = {
       schoolName,
       className,
       students: students.map(s => s.name),
       teachers: teachers.map(t => t.name),
-      homeworkTypes: Object.keys(homeworkTypes).length > 0 ? homeworkTypes : DEFAULT_HOMEWORK_TYPES
+      // Only include homeworkTypes if we're not using defaults
+      ...(useDefaultTypes ? {} : { homeworkTypes: simplifiedHomeworkTypes })
     };
 
     try {
       setCopyStatus('copying');
-      const encodedData = encodeData(data);
+      const encodedData = compress(JSON.stringify(data));
       if (!encodedData) {
         throw new Error('Failed to encode data');
       }
@@ -366,7 +433,7 @@ const LinkCreator = () => {
       console.error('Failed to copy URL:', err);
       setCopyStatus('initial');
     }
-  }, [schoolName, className, students, teachers, homeworkTypes, showNotification]);
+  }, [schoolName, className, students, teachers, homeworkTypes, useDefaultTypes, showNotification]);
 
   return (
     <div className="min-h-screen bg-gray-900 py-8" dir="rtl">

@@ -4,8 +4,8 @@ import { useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { HydrationProvider } from '@/context/HydrationContext';
-import { decodeData } from '@/components/LinkCreator/utils';
 import Loading from '@/components/Common/Loading';
+import { decompress } from '@/utils/dataUtils';
 
 // Dynamically import WeeklyMessageGenerator with its own loading state
 const WeeklyMessageGenerator = dynamic(
@@ -26,7 +26,7 @@ export default function ClientPage() {
       const data = searchParams.get('data');
       if (data) {
         try {
-          const decodedData = decodeData(data);
+          const decodedData = decompress(data);
           if (decodedData?.className && Array.isArray(decodedData?.students)) {
             // Update page title based on decoded data
             document.title = `${decodedData.className} - ${decodedData.students.length} طالب`;

@@ -29,39 +29,47 @@ const ColorSwatch = ({ color, selected, onClick }) => (
   </button>
 );
 
-const ListItem = ({ name, style, onEdit, onDelete }) => (
-  <div className="flex items-center justify-between p-3 rounded-lg bg-gray-700/50 group hover:bg-gray-700 transition-colors">
-    <div className="flex items-center gap-3">
-      <div className={`w-4 h-4 rounded-full ${style}`} />
-      <span className="text-gray-100">{name}</span>
+const ListItem = ({ name, style, onEdit, onDelete }) => {
+  // Extract the base color from the style string
+  const baseColor = style.split('-')[1]; // e.g., "bg-red-500" -> "red"
+  
+  return (
+    <div className="flex items-center justify-between p-3 rounded-lg bg-gray-700/50 group hover:bg-gray-700 transition-colors">
+      <div className="flex items-center gap-3">
+        <div className={`w-4 h-4 rounded-full ${TAILWIND_COLORS[baseColor].bg}`} />
+        <span className="text-gray-100">{name}</span>
+      </div>
+      <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button
+          onClick={onEdit}
+          className="p-1 rounded-md hover:bg-gray-600 text-gray-400 hover:text-gray-100 transition-colors"
+          aria-label="Edit"
+        >
+          <Pencil className="h-4 w-4" />
+        </button>
+        <button
+          onClick={onDelete}
+          className="p-1 rounded-md hover:bg-gray-600 text-gray-400 hover:text-gray-100 transition-colors"
+          aria-label="Delete"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+      </div>
     </div>
-    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-      <button
-        onClick={onEdit}
-        className="p-1 rounded-md hover:bg-gray-600 text-gray-400 hover:text-gray-100 transition-colors"
-        aria-label="Edit"
-      >
-        <Pencil className="h-4 w-4" />
-      </button>
-      <button
-        onClick={onDelete}
-        className="p-1 rounded-md hover:bg-gray-600 text-gray-400 hover:text-gray-100 transition-colors"
-        aria-label="Delete"
-      >
-        <Trash2 className="h-4 w-4" />
-      </button>
-    </div>
-  </div>
-);
+  );
+};
 
 const DefaultTypesPreview = () => (
   <div className="mt-4 space-y-2 opacity-75">
-    {Object.values(DEFAULT_HOMEWORK_TYPES).map((type) => (
-      <div key={type.id} className="flex items-center gap-3 p-3 rounded-lg bg-gray-700/30">
-        <div className={type.style} />
-        <span className="text-gray-100">{type.label}</span>
-      </div>
-    ))}
+    {Object.values(DEFAULT_HOMEWORK_TYPES).map((type) => {
+      const baseColor = type.style.split('-')[1];
+      return (
+        <div key={type.id} className="flex items-center gap-3 p-3 rounded-lg bg-gray-700/30">
+          <div className={`w-4 h-4 rounded-full ${TAILWIND_COLORS[baseColor].bg}`} />
+          <span className="text-gray-100">{type.label}</span>
+        </div>
+      );
+    })}
   </div>
 );
 
@@ -75,12 +83,10 @@ export const HomeworkTypesCard = ({
   const [selectedColor, setSelectedColor] = useState('red');
   const [showColorPicker, setShowColorPicker] = useState(false);
 
-  // Handle toggle of default types
   useEffect(() => {
     if (useDefaultTypes) {
       setHomeworkTypes(DEFAULT_HOMEWORK_TYPES);
     } else if (Object.keys(homeworkTypes).length === 0) {
-      // Only initialize with default types if there are no custom types
       setHomeworkTypes({ ...DEFAULT_HOMEWORK_TYPES });
     }
   }, [useDefaultTypes]);
@@ -89,15 +95,13 @@ export const HomeworkTypesCard = ({
     if (newTypeName.trim()) {
       setHomeworkTypes(prev => {
         const id = Date.now().toString();
-        const style = `bg-${selectedColor}-950/50 text-${selectedColor}-400 hover:bg-${selectedColor}-900/50`;
-
         return {
           ...prev,
           [id]: {
             id,
             label: newTypeName.trim(),
             template: '',
-            style
+            style: `bg-${selectedColor}-500`  // Simplified style
           }
         };
       });

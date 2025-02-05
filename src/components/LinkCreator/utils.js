@@ -1,33 +1,8 @@
 import React, { useState, useCallback, useEffect } from 'react';
 
-// Utility functions for encoding/decoding
-const stringToUtf8Bytes = (str) => {
-  const utf8 = unescape(encodeURIComponent(str));
-  const bytes = new Uint8Array(utf8.length);
-  for (let i = 0; i < utf8.length; i++) {
-    bytes[i] = utf8.charCodeAt(i);
-  }
-  return bytes;
-};
-
 const utf8BytesToString = (bytes) => {
   const utf8 = String.fromCharCode.apply(null, bytes);
   return decodeURIComponent(escape(utf8));
-};
-
-export const encodeData = (data) => {
-  try {
-    const jsonString = JSON.stringify(data);
-    const bytes = stringToUtf8Bytes(jsonString);
-    const base64 = btoa(String.fromCharCode.apply(null, bytes))
-      .replace(/\+/g, '-')
-      .replace(/\//g, '_')
-      .replace(/=+$/, '');
-    return base64;
-  } catch (error) {
-    console.error('Error encoding data:', error);
-    return null;
-  }
 };
 
 export const decodeData = (encodedData) => {

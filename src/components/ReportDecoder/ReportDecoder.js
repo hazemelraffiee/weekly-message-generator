@@ -1,37 +1,13 @@
 import React, { useState } from 'react';
-import pako from 'pako';
 import JSONPretty from 'react-json-pretty';
+import { decompress } from '@/utils/dataUtils';
 
 const ReportDecoder = () => {
   const [encodedData, setEncodedData] = useState('');
   const [decodedData, setDecodedData] = useState(null);
   const [error, setError] = useState(null);
 
-  // Function to decode base64 and decompress data
-  const decodeData = (encodedString) => {
-    try {
-      // Remove header information if present
-      const parts = encodedString.split('---\n');
-      const base64Data = parts[parts.length - 1].trim();
-
-      // Convert base64 to binary data
-      const binaryString = atob(base64Data);
-      const len = binaryString.length;
-      const bytes = new Uint8Array(len);
-      
-      for (let i = 0; i < len; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-      }
-
-      // Decompress the data using pako
-      const decompressed = pako.inflate(bytes, { to: 'string' });
-      
-      // Parse the JSON data
-      return JSON.parse(decompressed);
-    } catch (err) {
-      throw new Error('Failed to decode data. Please check if the input is valid.');
-    }
-  };
+  
 
   // Handle form submission
   const handleSubmit = (e) => {
@@ -40,7 +16,7 @@ const ReportDecoder = () => {
     setDecodedData(null);
 
     try {
-      const decoded = decodeData(encodedData);
+      const decoded = decompress(encodedData);
       setDecodedData(decoded);
     } catch (err) {
       setError(err.message);
