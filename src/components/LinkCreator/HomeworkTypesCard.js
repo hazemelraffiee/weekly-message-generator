@@ -84,10 +84,9 @@ export const HomeworkTypesCard = ({
   const [showColorPicker, setShowColorPicker] = useState(false);
 
   useEffect(() => {
+    // Only set default types when explicitly switching TO default types
     if (useDefaultTypes) {
       setHomeworkTypes(DEFAULT_HOMEWORK_TYPES);
-    } else if (Object.keys(homeworkTypes).length === 0) {
-      setHomeworkTypes({ ...DEFAULT_HOMEWORK_TYPES });
     }
   }, [useDefaultTypes]);
 
@@ -101,7 +100,7 @@ export const HomeworkTypesCard = ({
             id,
             label: newTypeName.trim(),
             template: '',
-            style: `bg-${selectedColor}-500`  // Simplified style
+            style: `bg-${selectedColor}-950`  // Simplified style
           }
         };
       });

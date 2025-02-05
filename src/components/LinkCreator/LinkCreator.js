@@ -303,10 +303,7 @@ const LinkCreator = () => {
       // Try new format first (decompress)
       let decodedData;
       try {
-        const decompressed = decompress(dataParam);
-        if (decompressed) {
-          decodedData = decompressed;
-        }
+        decodedData = decompress(dataParam);
       } catch (e) {
         console.log('New format decode failed, trying legacy format...', e);
       }
@@ -317,64 +314,89 @@ const LinkCreator = () => {
           decodedData = decodeData(dataParam);
         } catch (e) {
           console.log('Legacy format decode failed', e);
+          throw new Error('الرابط غير صالح');
         }
       }
   
       if (!decodedData) {
         throw new Error('الرابط غير صالح');
       }
-  
+
+      // 2. Update basic information
       setSchoolName(decodedData.schoolName || '');
       setClassName(decodedData.className || '');
-      setStudents(decodedData.students.map((name, index) => ({
-        id: `existing-${index}`,
+
+      // 3. Update student and teacher lists
+      const updatedStudents = decodedData.students.map((name, index) => ({
+        id: `student-${Date.now()}-${index}`,
         name
-      })));
-      setTeachers(decodedData.teachers.map((name, index) => ({
-        id: `existing-${index}`,
+      }));
+      setStudents(updatedStudents);
+
+      const updatedTeachers = decodedData.teachers.map((name, index) => ({
+        id: `teacher-${Date.now()}-${index}`,
         name
-      })));
-  
-      // Handle homework types
+      }));
+      setTeachers(updatedTeachers);
+
+      // 4. Handle homework types
       if (decodedData.homeworkTypes) {
-        // Check if it's the new simplified format (where values are color strings)
+        // First, determine if we're dealing with the simplified format
         const isSimplifiedFormat = Object.values(decodedData.homeworkTypes).every(
           value => typeof value === 'string'
         );
-  
+
+        // Turn off default types first to prevent interference
+        setUseDefaultTypes(false);
+
+        // Wait for the next tick to ensure useDefaultTypes has been updated
+        await new Promise(resolve => setTimeout(resolve, 0));
+
         if (isSimplifiedFormat) {
-          // Convert simplified format to full format
-          const reconstructedTypes = Object.entries(decodedData.homeworkTypes).reduce((acc, [label, color]) => {
-            const id = label.toLowerCase().replace(/\s+/g, '-');
-            acc[id] = {
-              id,
-              label,
-              template: '',
-              style: `bg-${color}-950/50 text-${color}-400 hover:bg-${color}-900/50`
-            };
-            return acc;
-          }, {});
-          
+          // Convert from simplified color format to full format
+          const reconstructedTypes = Object.entries(decodedData.homeworkTypes)
+            .reduce((acc, [label, color]) => {
+              const id = `type-${Date.now()}-${label.toLowerCase().replace(/\s+/g, '-')}`;
+              acc[id] = {
+                id,
+                label,
+                template: '',
+                style: `bg-${color}-950/50 text-${color}-400 hover:bg-${color}-900/50`
+              };
+              return acc;
+            }, {});
+
           setHomeworkTypes(reconstructedTypes);
-          setUseDefaultTypes(false);
         } else if (Object.keys(decodedData.homeworkTypes).length > 0) {
-          // Handle legacy format (full homework types objects)
-          setHomeworkTypes(decodedData.homeworkTypes);
-          setUseDefaultTypes(false);
+          // Handle full format homework types
+          // Add timestamps to IDs to ensure uniqueness
+          const updatedTypes = Object.entries(decodedData.homeworkTypes)
+            .reduce((acc, [key, type]) => {
+              const newId = `type-${Date.now()}-${key}`;
+              acc[newId] = {
+                ...type,
+                id: newId
+              };
+              return acc;
+            }, {});
+
+          setHomeworkTypes(updatedTypes);
         } else {
-          // Empty or invalid homework types, use defaults
-          setHomeworkTypes(DEFAULT_HOMEWORK_TYPES);
+          // Empty homework types, revert to defaults
           setUseDefaultTypes(true);
+          setHomeworkTypes(DEFAULT_HOMEWORK_TYPES);
         }
       } else {
         // No homework types in data, use defaults
-        setHomeworkTypes(DEFAULT_HOMEWORK_TYPES);
         setUseDefaultTypes(true);
+        setHomeworkTypes(DEFAULT_HOMEWORK_TYPES);
       }
 
+      // 5. Clean up and notify success
       setIsModalOpen(false);
       setLinkInput('');
       showNotification('تم تحميل البيانات بنجاح');
+
     } catch (error) {
       console.error('Load error:', error);
       setError('حدث خطأ أثناء تحميل البيانات. يرجى التحقق من الرابط والمحاولة مرة أخرى.');
