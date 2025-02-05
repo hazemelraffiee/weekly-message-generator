@@ -20,7 +20,7 @@ import {
 
 import { useHydration } from '@/context/HydrationContext'
 
-import { DEFAULT_HOMEWORK_TYPES } from '@/components/LinkCreator/utils'
+import { decodeData, DEFAULT_HOMEWORK_TYPES } from '@/components/LinkCreator/utils'
 import AttendanceCard from '@/components/MessageGenerator/AttendanceCard';
 import OldHomeworkGradingSection from '@/components/MessageGenerator/OldHomeworkGradingSection';
 import HomeworkSection from '@/components/MessageGenerator/HomeworkSection';
@@ -571,6 +571,9 @@ const WeeklyMessageGenerator = () => {
         let decodedData;
         try {
           decodedData = decompress(encodedData);
+          if(decodedData == null){
+            decodedData = decodeData(encodedData);
+          }
         } catch (e) {
           console.error('Error decoding data:', e);
         }

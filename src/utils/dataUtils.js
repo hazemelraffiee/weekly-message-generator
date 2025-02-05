@@ -100,7 +100,7 @@ export function decompress(compressed) {
       return text;
     }
   } catch (error) {
-    console.error('Decompression error:', error);
+    console.log('Decompression error:', error);
     return null;
   }
 }
