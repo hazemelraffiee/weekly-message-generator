@@ -188,6 +188,8 @@ const OldHomeworkGradingSection = ({ students, types, grades, attendance, onGrad
             const names = student.name.trim().split(' ');
             return names[0] === 'عبد' && names[1] ? `${names[0]} ${names[1]}` : names[0];
           })()}
+          studentName={student.name}
+          homeworkType={type.label}
         />
       </div>
     );

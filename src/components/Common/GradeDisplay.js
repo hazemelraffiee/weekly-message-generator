@@ -11,7 +11,7 @@ const germanGrades = [
 
 const getGradeColor = (grade, system, min, max) => {
   if (!grade) return 'bg-gray-800/50';
-  
+
   if (system === 'german' && grade === 6.0) {
     return 'bg-red-500/40 text-red-200';
   }
@@ -30,22 +30,40 @@ const getGradeColor = (grade, system, min, max) => {
   return 'bg-red-500/20 text-red-200';
 };
 
-const QuickSelectionGrid = ({ system, min, max, onSelect, onClose, currentGrade }) => {
-  const grades = system === 'german' 
+const QuickSelectionGrid = ({
+  system,
+  min,
+  max,
+  onSelect,
+  onClose,
+  currentGrade,
+  studentName,
+  homeworkType
+}) => {
+  const modalRef = useRef(null);
+  useClickOutside(modalRef, onClose);
+
+  const grades = system === 'german'
     ? germanGrades
     : Array.from({ length: ((max - min) * 2) + 1 }, (_, i) => min + (i * 0.5));
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-800 rounded-lg p-4 w-full max-w-md">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-medium">اختر الدرجة</h3>
-          <button 
-            onClick={onClose}
-            className="p-2 hover:bg-gray-700 rounded-full"
-          >
-            <X className="w-6 h-6" />
-          </button>
+      <div ref={modalRef} className="bg-gray-800 rounded-lg p-4 w-full max-w-md">
+        <div className="flex flex-col gap-2 mb-4">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <span className="font-medium text-gray-200">{studentName}</span>
+              <span className="text-gray-500">•</span>
+              <span className="text-gray-400">{homeworkType}</span>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-gray-700 rounded-full"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
         </div>
         <div className="grid grid-cols-3 gap-4">
           {grades.map(grade => (
@@ -78,15 +96,23 @@ const GradeDisplay = ({
   onChange,
   min = 1.0,
   max = 5.0,
-  placeholder = 'Tap to add grade'
+  placeholder = 'Tap to add grade',
+  studentName,
+  homeworkType
 }) => {
   const [grade, setGrade] = useState(initialValue);
   const [showQuickSelect, setShowQuickSelect] = useState(false);
+  const [isRecentlyChanged, setIsRecentlyChanged] = useState(false);
   const containerRef = useRef(null);
 
   const handleGradeChange = useCallback((newGrade) => {
     setGrade(newGrade);
     onChange?.(newGrade);
+    // Add recently changed effect
+    setIsRecentlyChanged(true);
+    setTimeout(() => {
+      setIsRecentlyChanged(false);
+    }, 500); // Animation duration
   }, [onChange]);
 
   const formatGrade = (value) => {
@@ -100,12 +126,13 @@ const GradeDisplay = ({
 
   const baseStyle = "min-w-[64px] min-h-[64px] px-4 py-3 rounded transition-all duration-200";
   const displayStyle = `${baseStyle} ${gradeColor} 
-    ${editable ? 'cursor-pointer hover:opacity-80 active:scale-95' : ''}
-    flex items-center justify-center`;
+      ${editable ? 'cursor-pointer hover:opacity-80 active:scale-95' : ''}
+      ${isRecentlyChanged ? 'ring-2 ring-blue-500 animate-pulse' : ''}
+      flex items-center justify-center`;
 
   return (
     <>
-      <div 
+      <div
         ref={containerRef}
         className="inline-flex items-stretch"
         onClick={() => editable && setShowQuickSelect(true)}
@@ -123,6 +150,8 @@ const GradeDisplay = ({
           currentGrade={grade}
           onSelect={handleGradeChange}
           onClose={() => setShowQuickSelect(false)}
+          studentName={studentName}
+          homeworkType={homeworkType}
         />
       )}
     </>
