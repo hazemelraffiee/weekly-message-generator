@@ -93,6 +93,13 @@ const CommentCell = ({ studentId, comment, onSaveComment, onCancel, placeholder 
 const OldHomeworkGradingSection = ({ students, types, grades, attendance, onGradesChange }) => {
   const [openCommentStudentId, setOpenCommentStudentId] = useState(null);
 
+  const sortedStudents = [...students].sort((a, b) => {
+    const aPresent = attendance[a.id]?.present;
+    const bPresent = attendance[b.id]?.present;
+    if (aPresent === bPresent) return 0;
+    return aPresent ? -1 : 1;
+  });
+
   const handleGrade = (studentId, typeId, value) => {
     const newGrades = { ...grades.grades };
     if (!value?.toString().trim()) {
@@ -208,15 +215,21 @@ const OldHomeworkGradingSection = ({ students, types, grades, attendance, onGrad
               </tr>
             </thead>
             <tbody>
-              {students.map((student) => {
+              {sortedStudents.map((student) => {
                 const hasComment = Boolean(grades.comments[student.id]);
                 const isRowOpen = hasComment || openCommentStudentId === student.id;
+                const isPresent = attendance[student.id]?.present;
 
                 return (
                   <React.Fragment key={student.id}>
                     <tr className="border-b border-gray-800 last:border-0 hover:bg-gray-800/30">
                       <td className="px-4 py-3">
-                        <span className={!attendance[student.id]?.present ? 'text-red-300 hover:text-red-200' : 'text-gray-300'}>
+                        <div className="flex items-center gap-2">
+                          {isPresent ? (
+                            <Check className="h-4 w-4 text-green-500" />
+                          ) : (
+                            <X className="h-4 w-4 text-red-500" />
+                          )}
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -226,11 +239,11 @@ const OldHomeworkGradingSection = ({ students, types, grades, attendance, onGrad
                                 setOpenCommentStudentId(student.id);
                               }
                             }}
-                            className={`${styles.button.ghost} ${!attendance[student.id]?.present ? 'text-red-500 hover:text-red-300' : ''}`}
+                            className={`${styles.button.ghost} ${!isPresent ? 'text-red-500 hover:text-red-300' : 'text-gray-300 hover:text-gray-100'}`}
                           >
                             {student.name}
                           </button>
-                        </span>
+                        </div>
                       </td>
                       {Object.entries(types).map(([typeId, type]) => (
                         <td key={typeId} className="px-4 py-3 text-center">
