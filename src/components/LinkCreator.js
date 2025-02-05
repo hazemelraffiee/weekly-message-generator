@@ -59,7 +59,6 @@ export const decodeData = (encodedData) => {
 // Utility functions and hooks
 const useLocalStorage = (key, initialValue) => {
   const [storedValue, setStoredValue] = useState(initialValue);
-
   useEffect(() => {
     try {
       const item = localStorage.getItem(`linkCreator_${key}`);
@@ -70,7 +69,6 @@ const useLocalStorage = (key, initialValue) => {
       console.error(`Error loading ${key} from localStorage:`, error);
     }
   }, [key]);
-
   const setValue = useCallback((value) => {
     try {
       const valueToStore = value instanceof Function ? value(storedValue) : value;
@@ -80,11 +78,9 @@ const useLocalStorage = (key, initialValue) => {
       console.error(`Error saving ${key} to localStorage:`, error);
     }
   }, [key, storedValue]);
-
   return [storedValue, setValue];
 };
-
-// Reusable components
+const TAILWIND_COLORS = ['red', 'green', 'blue', 'yellow', 'purple', 'pink', 'orange', 'teal', 'indigo', 'gray'];
 const InputField = ({ label, value, onChange, placeholder, onKeyDown }) => (
   <div className="space-y-2">
     {label && <label className="text-sm font-medium text-gray-200">{label}</label>}
@@ -97,104 +93,79 @@ const InputField = ({ label, value, onChange, placeholder, onKeyDown }) => (
     />
   </div>
 );
-
-const ListItem = ({ name, onEdit, onDelete }) => (
+const ListItem = ({ name, color, onEdit, onDelete }) => (
   <div className="flex items-center justify-between p-2 bg-gray-700/50 rounded hover:bg-gray-700 transition-colors">
-    <span className="text-gray-100">{name}</span>
+    <div className="flex items-center gap-2">
+      <div className={`w-4 h-4 rounded-full bg-${color}-500`}></div>
+      <span className="text-gray-100">{name}</span>
+    </div>
     <div className="flex items-center gap-1">
-      <button
-        onClick={onEdit}
-        className="text-blue-500 hover:text-blue-400 p-1"
-      >
+      <button onClick={onEdit} className="text-blue-500 hover:text-blue-400 p-1">
         <Pencil className="h-4 w-4" />
       </button>
-      <button
-        onClick={onDelete}
-        className="text-red-500 hover:text-red-400 p-1"
-      >
+      <button onClick={onDelete} className="text-red-500 hover:text-red-400 p-1">
         <Trash2 className="h-4 w-4" />
       </button>
     </div>
   </div>
 );
 
-const AddItemForm = ({ value, onChange, onAdd, placeholder }) => (
-  <div className="flex gap-2">
-    <input
-      className="flex-1 h-10 rounded-md border border-gray-700 bg-gray-800/50 px-3 py-2 text-sm text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-      value={value}
-      onChange={onChange}
-      placeholder={placeholder}
-      onKeyDown={(e) => e.key === 'Enter' && onAdd()}
-    />
-    <button
-      onClick={onAdd}
-      className="inline-flex items-center justify-center rounded-md h-10 px-4 bg-blue-600 hover:bg-blue-700 transition-colors text-white"
-    >
-      <Plus className="h-4 w-4 inline-block ml-2" />
-      إضافة
-    </button>
-  </div>
-);
-
-// Feature components
-const SchoolInfoCard = ({ schoolName, setSchoolName, className, setClassName }) => (
-  <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-    <h2 className="text-xl font-semibold text-gray-100 mb-6">معلومات المدرسة</h2>
-    <div className="space-y-4">
-      <InputField
-        label="اسم المدرسة"
-        value={schoolName}
-        onChange={(e) => setSchoolName(e.target.value)}
-        placeholder="أدخل اسم المدرسة"
-      />
-      <InputField
-        label="اسم الفصل"
-        value={className}
-        onChange={(e) => setClassName(e.target.value)}
-        placeholder="أدخل اسم الفصل"
-      />
-    </div>
-  </div>
-);
-
-const TeachersCard = ({ teachers, setTeachers, newTeacherName, setNewTeacherName }) => {
-  const addTeacher = useCallback(() => {
-    if (newTeacherName.trim()) {
-      setTeachers(prev => {
-        if (prev.some(teacher => teacher.name === newTeacherName.trim())) {
-          return prev;
-        }
-        return [...prev, { id: Date.now().toString(), name: newTeacherName.trim() }];
+const HomeworkTypesCard = ({ homeworkTypes, setHomeworkTypes }) => {
+  const [newTypeName, setNewTypeName] = useState('');
+  const [selectedColor, setSelectedColor] = useState('green');
+  const addHomeworkType = useCallback(() => {
+    if (newTypeName.trim()) {
+      setHomeworkTypes(prev => {
+        if (prev.some(type => type.name === newTypeName.trim())) return prev;
+        return [...prev, { id: Date.now().toString(), name: newTypeName.trim(), color: selectedColor }];
       });
-      setNewTeacherName('');
+      setNewTypeName('');
     }
-  }, [newTeacherName, setTeachers, setNewTeacherName]);
-
+  }, [newTypeName, selectedColor, setHomeworkTypes]);
   return (
     <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-      <h2 className="text-xl font-semibold text-gray-100 mb-6">المعلمون</h2>
+      <h2 className="text-xl font-semibold text-gray-100 mb-6">أنواع الواجبات</h2>
       <div className="space-y-4">
-        <AddItemForm
-          value={newTeacherName}
-          onChange={(e) => setNewTeacherName(e.target.value)}
-          onAdd={addTeacher}
-          placeholder="اسم المعلم"
-        />
+        <div className="flex gap-2">
+          <input
+            className="flex-1 h-10 rounded-md border border-gray-700 bg-gray-800/50 px-3 py-2 text-sm text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            value={newTypeName}
+            onChange={(e) => setNewTypeName(e.target.value)}
+            placeholder="نوع الواجب"
+            onKeyDown={(e) => e.key === 'Enter' && addHomeworkType()}
+          />
+          <select
+            value={selectedColor}
+            onChange={(e) => setSelectedColor(e.target.value)}
+            className="h-10 rounded-md border border-gray-700 bg-gray-800/50 px-3 py-2 text-sm text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            {TAILWIND_COLORS.map(color => (
+              <option key={color} value={color}>{color}</option>
+            ))}
+          </select>
+          <button
+            onClick={addHomeworkType}
+            className="inline-flex items-center justify-center rounded-md h-10 px-4 bg-blue-600 hover:bg-blue-700 transition-colors text-white"
+          >
+            <Plus className="h-4 w-4 inline-block ml-2" />
+            إضافة
+          </button>
+        </div>
         <div className="space-y-2 max-h-[300px] overflow-y-auto">
-          {teachers.map((teacher) => (
+          {homeworkTypes.map((type) => (
             <ListItem
-              key={teacher.id}
-              name={teacher.name}
+              key={type.id}
+              name={type.name}
+              color={type.color}
               onEdit={() => {
-                const newName = window.prompt('تعديل اسم المعلم', teacher.name);
+                const newName = window.prompt('تعديل نوع الواجب', type.name);
                 if (newName?.trim()) {
-                  setTeachers(prev => prev.map(t =>
-                    t.id === teacher.id ? { ...t, name: newName.trim() } : t
+                  setHomeworkTypes(prev => prev.map(t =>
+                    t.id === type.id ? { ...t, name: newName.trim() } : t
                   ));
                 }
               }}
-              onDelete={() => setTeachers(prev => prev.filter(t => t.id !== teacher.id))}
+              onDelete={() => setHomeworkTypes(prev => prev.filter(t => t.id !== type.id))}
             />
           ))}
         </div>
@@ -347,6 +318,90 @@ const Notification = ({ notification }) => {
   );
 };
 
+const AddItemForm = ({ value, onChange, onAdd, placeholder }) => (
+  <div className="flex gap-2">
+    <input
+      className="flex-1 h-10 rounded-md border border-gray-700 bg-gray-800/50 px-3 py-2 text-sm text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      onKeyDown={(e) => e.key === 'Enter' && onAdd()}
+    />
+    <button
+      onClick={onAdd}
+      className="inline-flex items-center justify-center rounded-md h-10 px-4 bg-blue-600 hover:bg-blue-700 transition-colors text-white"
+    >
+      <Plus className="h-4 w-4 inline-block ml-2" />
+      إضافة
+    </button>
+  </div>
+);
+
+const SchoolInfoCard = ({ schoolName, setSchoolName, className, setClassName }) => (
+  <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+    <h2 className="text-xl font-semibold text-gray-100 mb-6">معلومات المدرسة</h2>
+    <div className="space-y-4">
+      <InputField
+        label="اسم المدرسة"
+        value={schoolName}
+        onChange={(e) => setSchoolName(e.target.value)}
+        placeholder="أدخل اسم المدرسة"
+      />
+      <InputField
+        label="اسم الفصل"
+        value={className}
+        onChange={(e) => setClassName(e.target.value)}
+        placeholder="أدخل اسم الفصل"
+      />
+    </div>
+  </div>
+);
+
+const TeachersCard = ({ teachers, setTeachers, newTeacherName, setNewTeacherName }) => {
+  const addTeacher = () => {
+    if (newTeacherName.trim()) {
+      setTeachers(prev => {
+        if (prev.some(teacher => teacher.name === newTeacherName.trim())) {
+          return prev;
+        }
+        return [...prev, { id: Date.now().toString(), name: newTeacherName.trim() }];
+      });
+      setNewTeacherName('');
+    }
+  };
+
+  return (
+    <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+      <h2 className="text-xl font-semibold text-gray-100 mb-6">المعلمون</h2>
+      <div className="space-y-4">
+        <AddItemForm
+          value={newTeacherName}
+          onChange={(e) => setNewTeacherName(e.target.value)}
+          onAdd={addTeacher}
+          placeholder="اسم المعلم"
+        />
+        <div className="space-y-2 max-h-[300px] overflow-y-auto">
+          {teachers.map((teacher) => (
+            <ListItem
+              key={teacher.id}
+              name={teacher.name}
+              onEdit={() => {
+                const newName = window.prompt('تعديل اسم المعلم', teacher.name);
+                if (newName?.trim()) {
+                  setTeachers(prev => prev.map(t =>
+                    t.id === teacher.id ? { ...t, name: newName.trim() } : t
+                  ));
+                }
+              }}
+              onDelete={() => setTeachers(prev => prev.filter(t => t.id !== teacher.id))}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Main component
 const LinkCreator = () => {
   // State management
@@ -356,6 +411,7 @@ const LinkCreator = () => {
   const [students, setStudents] = useState([]);
   const [newTeacherName, setNewTeacherName] = useState('');
   const [teachers, setTeachers] = useState([]);
+  const [homeworkTypes, setHomeworkTypes] = useState([]);
   const [copyStatus, setCopyStatus] = useState('initial');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [linkInput, setLinkInput] = useState('');
@@ -416,7 +472,8 @@ const LinkCreator = () => {
       schoolName,
       className,
       students: students.map(s => s.name),
-      teachers: teachers.map(t => t.name)
+      teachers: teachers.map(t => t.name),
+      homeworkTypes: homeworkTypes
     };
 
     try {
@@ -435,16 +492,12 @@ const LinkCreator = () => {
       console.error('Failed to copy URL:', err);
       setCopyStatus('initial');
     }
-  }, [schoolName, className, students, teachers, showNotification]);
+  }, [schoolName, className, students, teachers, homeworkTypes, showNotification]);
 
   return (
     <div className="min-h-screen bg-gray-900 py-8" dir="rtl">
       <div className="max-w-7xl mx-auto px-4">
-        <Header
-          onLoadClick={() => setIsModalOpen(true)}
-          onClearClick={handleClearLists}
-        />
-
+        <Header onLoadClick={() => setIsModalOpen(true)} onClearClick={handleClearLists} />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-24">
           <div className="space-y-6">
             <SchoolInfoCard
@@ -458,6 +511,10 @@ const LinkCreator = () => {
               setTeachers={setTeachers}
               newTeacherName={newTeacherName}
               setNewTeacherName={setNewTeacherName}
+            />
+            <HomeworkTypesCard
+              homeworkTypes={homeworkTypes}
+              setHomeworkTypes={setHomeworkTypes}
             />
           </div>
           <StudentsCard
@@ -561,5 +618,4 @@ const LinkCreator = () => {
     </div>
   );
 };
-
 export default LinkCreator;
