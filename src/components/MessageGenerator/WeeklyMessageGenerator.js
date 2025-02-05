@@ -20,12 +20,12 @@ import {
 
 import { useHydration } from '@/context/HydrationContext'
 
-import { decodeData } from '@/components/LinkCreator'
-import AttendanceCard from '@/components/AttendanceCard';
-import OldHomeworkGradingSection from '@/components/OldHomeworkGradingSection';
-import HomeworkSection, { allHomeworkTypes, homeworkTypes } from '@/components/HomeworkSection';
-import Section from '@/components/Section';
-import ExportDataButton from '@/components/ExportDataButton';
+import { decodeData } from '@/components/LinkCreator/LinkCreator'
+import AttendanceCard from '@/components/MessageGenerator/AttendanceCard';
+import OldHomeworkGradingSection from '@/components/MessageGenerator/OldHomeworkGradingSection';
+import HomeworkSection, { allHomeworkTypes, homeworkTypes } from '@/components/MessageGenerator/HomeworkSection';
+import Section from '@/components/MessageGenerator/Section';
+import ExportDataButton from '@/components/MessageGenerator/ExportDataButton';
 
 const PILOT_CLASSES = [
   'الفوج الرابع'

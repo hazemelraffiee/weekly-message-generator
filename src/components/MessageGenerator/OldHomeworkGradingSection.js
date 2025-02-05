@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Plus, X, Check, ChevronDown, Trash2, MessageCircle, PenLine } from 'lucide-react';
 import useClickOutside from '@/hooks/useClickOutside';
-import GradeDisplay from '@/components/GradeDisplay';
+import GradeDisplay from '@/components/Common/GradeDisplay';
 import { homeworkTypes } from './HomeworkSection';
 
 const styles = {

@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic';
 import { HydrationProvider } from '@/context/HydrationContext';
 
 const LinkCreator = dynamic(
-  () => import('@/components/LinkCreator'),
+  () => import('@/components/LinkCreator/LinkCreator'),
   { ssr: false }
 );
 

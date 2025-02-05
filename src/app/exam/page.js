@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic';
 import { HydrationProvider } from '@/context/HydrationContext';
 
 const ExamGrading = dynamic(
-  () => import('@/components/ExamGrading'),
+  () => import('@/components/ExamGrading/ExamGrading'),
   { ssr: false }
 );
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, Copy, Check, ChevronDown, ChevronUp } from 'lucide-react';
-import { decodeData } from './LinkCreator';
+import { decodeData } from '../LinkCreator/LinkCreator';
 
 const GRADES = [
   { value: 1.0, label: '1', color: 'emerald' },

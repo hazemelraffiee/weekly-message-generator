@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic';
 import { HydrationProvider } from '@/context/HydrationContext';
 
 const ClassroomOverview = dynamic(
-  () => import('@/components/ClassroomOverview'),
+  () => import('@/components/ClassroomOverview/ClassroomOverview'),
   { ssr: false }
 );
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import { Folder, AlertCircle, Upload, Menu, X, Users, Clock, GraduationCap, TrendingUp } from 'lucide-react';
 
-import ClassroomAnalytics from '@/components/ClassroomAnalytics';
+import ClassroomAnalytics from '@/components/ClassroomOverview/ClassroomAnalytics';
 
 const ClassroomOverview = () => {
   // State for search and sorting

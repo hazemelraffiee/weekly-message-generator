@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic';
 import { HydrationProvider } from '@/context/HydrationContext';
 
 const ReportDecoder = dynamic(
-  () => import('@/components/ReportDecoder'),
+  () => import('@/components/ReportDecoder/ReportDecoder'),
   { ssr: false }
 );
 
