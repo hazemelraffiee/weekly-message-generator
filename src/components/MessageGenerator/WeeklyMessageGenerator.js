@@ -20,10 +20,10 @@ import {
 
 import { useHydration } from '@/context/HydrationContext'
 
-import { decodeData } from '@/components/LinkCreator/LinkCreator'
+import { decodeData, DEFAULT_HOMEWORK_TYPES } from '@/components/LinkCreator/utils'
 import AttendanceCard from '@/components/MessageGenerator/AttendanceCard';
 import OldHomeworkGradingSection from '@/components/MessageGenerator/OldHomeworkGradingSection';
-import HomeworkSection, { allHomeworkTypes, homeworkTypes } from '@/components/MessageGenerator/HomeworkSection';
+import HomeworkSection from '@/components/MessageGenerator/HomeworkSection';
 import Section from '@/components/MessageGenerator/Section';
 import ExportDataButton from '@/components/MessageGenerator/ExportDataButton';
 
@@ -32,7 +32,7 @@ const PILOT_CLASSES = [
 ];
 
 const isPilotClass = (className) => {
-  return PILOT_CLASSES.includes(className);
+  return PILOT_CLASSES.includes(className) || true;
 };
 
 const useLocalStorage = (key, initialValue) => {
@@ -112,7 +112,7 @@ const WeeklyMessageGenerator = () => {
   });
 
   const [homeworkGrades, setHomeworkGrades] = useLocalStorage('homeworkGrades', {
-    types: homeworkTypes,
+    types: {},
     grades: {},
     comments: {}
   });
@@ -184,7 +184,7 @@ const WeeklyMessageGenerator = () => {
     });
 
     setHomeworkGrades({
-      types: homeworkTypes, // Reset to initial homework types
+      types: coreData.homeworkTypes, // Reset to initial homework types
       grades: {}, // Clear all grades
       comments: {} // Clear all comments
     });
@@ -384,7 +384,7 @@ const WeeklyMessageGenerator = () => {
       if (generalHomework.length > 0) {
         message += '*الواجبات العامة:*\n';
         generalHomework.forEach(hw => {
-          const typeLabel = allHomeworkTypes[hw.type].label;
+          const typeLabel = coreData.homeworkTypes[hw.type].label;
           message += `• ${typeLabel}: ${hw.content}\n`;
         });
         message += '\n';
@@ -407,7 +407,7 @@ const WeeklyMessageGenerator = () => {
           if (student) {
             message += `\n👤 *${student.name}:*\n`;
             assignments.forEach(hw => {
-              const typeLabel = allHomeworkTypes[hw.type].label;
+              const typeLabel = coreData.homeworkTypes[hw.type].label;
               message += `• ${typeLabel}: ${hw.content}\n`;
             });
           }
@@ -426,7 +426,7 @@ const WeeklyMessageGenerator = () => {
       });
 
       Object.entries(groupedByType).forEach(([type, assignments]) => {
-        const typeLabel = allHomeworkTypes[type].label;
+        const typeLabel = coreData.homeworkTypes[type].label;
         message += `*${typeLabel}:*\n`;
 
         assignments.forEach(hw => {
@@ -444,7 +444,7 @@ const WeeklyMessageGenerator = () => {
     }
 
     return message;
-  }, [homework.assignments, coreData.students]);
+  }, [homework.assignments, coreData.students, coreData.homeworkTypes]);
 
   const generateMessage = useCallback((format = 'student') => {
     // Opening and Welcome
@@ -560,14 +560,32 @@ const WeeklyMessageGenerator = () => {
   // Effect to decode and validate data parameter
   useEffect(() => {
     if (typeof window === 'undefined') return;
-
+  
     const params = new URLSearchParams(window.location.search);
     const encodedData = params.get('data');
-
+  
     if (encodedData) {
       try {
         const decodedData = decodeData(encodedData);
         if (decodedData && decodedData.className && Array.isArray(decodedData.students)) {
+          // Use provided homework types or fallback to defaults if none provided
+          let homeworkTypesObj = DEFAULT_HOMEWORK_TYPES;
+  
+          if (decodedData.homeworkTypes && typeof decodedData.homeworkTypes === 'object') {
+            // Process and validate homework types without merging defaults
+            homeworkTypesObj = Object.entries(decodedData.homeworkTypes).reduce((acc, [id, type]) => {
+              if (type && type.id && type.label && type.style) {
+                acc[id] = {
+                  id: type.id,
+                  label: type.label,
+                  template: type.template || '',
+                  style: type.style
+                };
+              }
+              return acc;
+            }, {});
+          }
+  
           setCoreData({
             schoolName: decodedData.schoolName || '',
             className: decodedData.className,
@@ -575,12 +593,29 @@ const WeeklyMessageGenerator = () => {
               id: generateStudentId(name),
               name: name
             })),
-            teachers: decodedData.teachers || []
+            teachers: decodedData.teachers || [],
+            homeworkTypes: homeworkTypesObj
           });
+  
+          // Initialize homeworkGrades with the types
+          setHomeworkGrades(prev => ({
+            ...prev,
+            types: homeworkTypesObj
+          }));
         }
       } catch (error) {
         console.error('Error decoding data:', error);
       }
+    } else {
+      // If no data is provided, initialize with default homework types
+      setCoreData(prev => ({
+        ...prev,
+        homeworkTypes: DEFAULT_HOMEWORK_TYPES
+      }));
+      setHomeworkGrades(prev => ({
+        ...prev,
+        types: DEFAULT_HOMEWORK_TYPES
+      }));
     }
     setIsLoading(false);
   }, []); // Empty dependency array since this should only run once
@@ -889,7 +924,7 @@ const WeeklyMessageGenerator = () => {
             <div>
               <OldHomeworkGradingSection
                 students={coreData.students}
-                types={homeworkGrades.types}
+                types={coreData.homeworkTypes}
                 grades={homeworkGrades}
                 attendance={attendance}
                 onGradesChange={handleGradesChange}
@@ -914,6 +949,7 @@ const WeeklyMessageGenerator = () => {
               homework={homework}
               onHomeworkChange={setHomework}
               attendance={attendance}
+              homeworkTypes={coreData.homeworkTypes}
             />
           </div>
         </Section>

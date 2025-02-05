@@ -1,37 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Plus, Edit, X, Check, ChevronDown } from 'lucide-react';
 
-export const homeworkTypes = {
-  memorization: {
-    id: 'memorization',
-    label: 'حفظ',
-    template: '',
-    style: 'bg-green-950/50 text-green-400 hover:bg-green-900/50'
-  },
-  recentReview: {
-    id: 'recentReview',
-    label: 'مراجعة قريبة',
-    template: '',
-    style: 'bg-blue-950/50 text-blue-400 hover:bg-blue-900/50'
-  },
-  pastReview: {
-    id: 'pastReview',
-    label: 'مراجعة بعيدة',
-    template: '',
-    style: 'bg-purple-950/50 text-purple-400 hover:bg-purple-900/50'
-  }
-};
-
-export const allHomeworkTypes = {
-  ...homeworkTypes,
-  custom: {
-    id: 'custom',
-    label: 'واجب آخر',
-    template: '',
-    style: 'bg-gray-950/50 text-gray-400 hover:bg-gray-900/50'
-  }
-};
-
 const HomeworkTypeButton = ({ type, config, onAddForAll, onAddForGroup }) => {
   const [isOpen, setIsOpen] = useState(false);
   const buttonRef = useRef(null);
@@ -90,9 +59,9 @@ const HomeworkTypeButton = ({ type, config, onAddForAll, onAddForGroup }) => {
   );
 };
 
-const HomeworkTypeButtons = ({ onAdd, onAddForGroup }) => (
+const HomeworkTypeButtons = ({ onAdd, onAddForGroup, homeworkTypes }) => (
   <div className="flex flex-wrap gap-2">
-    {Object.entries(allHomeworkTypes).map(([type, config]) => (
+    {Object.entries(homeworkTypes).map(([type, config]) => (
       <HomeworkTypeButton
         key={type}
         type={type}
@@ -111,11 +80,18 @@ const HomeworkItem = ({
   onEdit,
   onDelete,
   readOnly = false,
-  isReferenceToGeneral = false
+  isReferenceToGeneral = false,
+  homeworkTypes  // Remove the default value here
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedContent, setEditedContent] = useState(content);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+  // Add validation to ensure we have homeworkTypes and the specific type exists
+  if (!homeworkTypes || !homeworkTypes[type]) {
+    console.error(`Missing homework type configuration for type: ${type}`);
+    return null;
+  }
 
   const handleSave = () => {
     onEdit(editedContent);
@@ -131,12 +107,13 @@ const HomeworkItem = ({
   return (
     <>
       <div
-        className={`flex items-center justify-between py-3 border-b border-gray-800 last:border-0 transition-all duration-300 hover:bg-gray-800/20 ${isReferenceToGeneral ? 'opacity-75 hover:opacity-90' : ''
-          }`}
+        className={`flex items-center justify-between py-3 border-b border-gray-800 last:border-0 transition-all duration-300 hover:bg-gray-800/20 ${
+          isReferenceToGeneral ? 'opacity-75 hover:opacity-90' : ''
+        }`}
         id={id}
       >
-        <div className={`${allHomeworkTypes[type].style} flex-1`}>
-          <span className="font-bold ml-2">{allHomeworkTypes[type].label}:</span>
+        <div className={`${homeworkTypes[type].style} flex-1`}>
+          <span className="font-bold ml-2">{homeworkTypes[type].label}:</span>
           {isEditing ? (
             <input
               type="text"
@@ -172,10 +149,8 @@ const HomeworkItem = ({
                   <button
                     onClick={() => {
                       if (!content?.trim()) {
-                        // If content is empty or just whitespace, delete immediately
                         onDelete();
                       } else {
-                        // Otherwise show confirmation dialog
                         setShowDeleteDialog(true);
                       }
                     }}
@@ -301,7 +276,7 @@ const StudentSelector = ({ students, onConfirm, onCancel }) => {
   );
 };
 
-const HomeworkSection = ({ students, homework, onHomeworkChange, attendance = {} }) => {
+const HomeworkSection = ({ students, homework, onHomeworkChange, attendance = {}, homeworkTypes }) => {
   // Track UI state for expandable sections and modals
   const [showSpecificHomework, setShowSpecificHomework] = useState(() => {
     // Check if there are any specific homework assignments in the initial homework data
@@ -333,7 +308,7 @@ const HomeworkSection = ({ students, homework, onHomeworkChange, attendance = {}
     const newHomework = {
       id: Date.now().toString(),
       type,
-      content: allHomeworkTypes[type].template || '',
+      content: homeworkTypes[type].template || '',
       assignedStudents: selectedStudents,
       isSpecific
     };
@@ -377,7 +352,7 @@ const HomeworkSection = ({ students, homework, onHomeworkChange, attendance = {}
   };
 
   // Component for general homework section
-  const GeneralHomeworkCard = () => (
+  const GeneralHomeworkCard = ({ homeworkTypes }) => (
     <div className="w-full mb-8 border border-gray-800 rounded-lg bg-gray-900/80 p-8">
       <div className="flex flex-col space-y-3">
         <div className="flex items-center justify-between">
@@ -390,6 +365,7 @@ const HomeworkSection = ({ students, homework, onHomeworkChange, attendance = {}
             setSelectedType(type);
             setShowStudentSelector(true);
           }}
+          homeworkTypes={homeworkTypes}
         />
 
         <div ref={generalHomeworkRef} className="space-y-4">
@@ -411,6 +387,7 @@ const HomeworkSection = ({ students, homework, onHomeworkChange, attendance = {}
                   content={hw.content}
                   onEdit={(newContent) => updateHomework(hw.id, { content: newContent })}
                   onDelete={() => deleteHomework(hw.id)}
+                  homeworkTypes={homeworkTypes}
                 />
               </div>
             ))}
@@ -478,7 +455,7 @@ const HomeworkSection = ({ students, homework, onHomeworkChange, attendance = {}
             <div className="mb-6">
               <h3 className="font-bold mb-2 text-gray-100">الواجبات الخاصة</h3>
               <div className="flex flex-wrap gap-2 mb-4">
-                {Object.entries(allHomeworkTypes).map(([type, config]) => (
+                {Object.entries(homeworkTypes).map(([type, config]) => (
                   <button
                     key={type}
                     onClick={() => addHomework(type, [student.id], true)}
@@ -498,6 +475,7 @@ const HomeworkSection = ({ students, homework, onHomeworkChange, attendance = {}
                     content={hw.content}
                     onEdit={(newContent) => updateHomework(hw.id, { content: newContent })}
                     onDelete={() => deleteHomework(hw.id)}
+                    homeworkTypes={homeworkTypes}
                   />
                 ))}
               </div>
@@ -518,6 +496,7 @@ const HomeworkSection = ({ students, homework, onHomeworkChange, attendance = {}
                     }}
                     readOnly
                     isReferenceToGeneral={true}
+                    homeworkTypes={homeworkTypes}
                   />
                 ))}
               </div>
@@ -530,7 +509,7 @@ const HomeworkSection = ({ students, homework, onHomeworkChange, attendance = {}
 
   return (
     <div className="container mx-auto p-4 text-right" dir="rtl">
-      <GeneralHomeworkCard />
+      <GeneralHomeworkCard homeworkTypes={homeworkTypes} />
 
       {showSpecificHomework && (
         <div className="space-y-2">

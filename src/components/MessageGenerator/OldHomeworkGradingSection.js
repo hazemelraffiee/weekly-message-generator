@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Plus, X, Check, ChevronDown, Trash2, MessageCircle, PenLine } from 'lucide-react';
 import useClickOutside from '@/hooks/useClickOutside';
 import GradeDisplay from '@/components/Common/GradeDisplay';
-import { homeworkTypes } from './HomeworkSection';
 
 const styles = {
   input: "px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-gray-100",

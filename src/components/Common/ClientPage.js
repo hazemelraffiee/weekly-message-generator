@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { HydrationProvider } from '@/context/HydrationContext';
-import { decodeData } from '@/components/LinkCreator/LinkCreator';
+import { decodeData } from '@/components/LinkCreator/utils';
 import Loading from '@/components/Common/Loading';
 
 // Dynamically import WeeklyMessageGenerator with its own loading state

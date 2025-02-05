@@ -3,84 +3,9 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Plus, Trash2, Link2, Check, Loader2, Upload, X, Pencil } from 'lucide-react';
 
-// Utility functions for encoding/decoding
-const stringToUtf8Bytes = (str) => {
-  const utf8 = unescape(encodeURIComponent(str));
-  const bytes = new Uint8Array(utf8.length);
-  for (let i = 0; i < utf8.length; i++) {
-    bytes[i] = utf8.charCodeAt(i);
-  }
-  return bytes;
-};
+import { decodeData, encodeData, useLocalStorage } from '@/components/LinkCreator/utils';
+import { HomeworkTypesCard } from '@/components/LinkCreator/HomeworkTypesCard';
 
-const utf8BytesToString = (bytes) => {
-  const utf8 = String.fromCharCode.apply(null, bytes);
-  return decodeURIComponent(escape(utf8));
-};
-
-const encodeData = (data) => {
-  try {
-    const jsonString = JSON.stringify(data);
-    const bytes = stringToUtf8Bytes(jsonString);
-    const base64 = btoa(String.fromCharCode.apply(null, bytes))
-      .replace(/\+/g, '-')
-      .replace(/\//g, '_')
-      .replace(/=+$/, '');
-    return base64;
-  } catch (error) {
-    console.error('Error encoding data:', error);
-    return null;
-  }
-};
-
-export const decodeData = (encodedData) => {
-  try {
-    const dataParam = encodedData.includes('?data=')
-      ? encodedData.split('?data=')[1]
-      : encodedData;
-
-    const base64 = dataParam
-      .replace(/-/g, '+')
-      .replace(/_/g, '/');
-    const paddedBase64 = base64 + '=='.slice(0, (4 - base64.length % 4) % 4);
-    const binary = atob(paddedBase64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-      bytes[i] = binary.charCodeAt(i);
-    }
-    const jsonString = utf8BytesToString(bytes);
-    return JSON.parse(jsonString);
-  } catch (error) {
-    console.error('Error decoding data:', error);
-    return null;
-  }
-};
-
-// Utility functions and hooks
-const useLocalStorage = (key, initialValue) => {
-  const [storedValue, setStoredValue] = useState(initialValue);
-  useEffect(() => {
-    try {
-      const item = localStorage.getItem(`linkCreator_${key}`);
-      if (item) {
-        setStoredValue(JSON.parse(item));
-      }
-    } catch (error) {
-      console.error(`Error loading ${key} from localStorage:`, error);
-    }
-  }, [key]);
-  const setValue = useCallback((value) => {
-    try {
-      const valueToStore = value instanceof Function ? value(storedValue) : value;
-      setStoredValue(valueToStore);
-      localStorage.setItem(`linkCreator_${key}`, JSON.stringify(valueToStore));
-    } catch (error) {
-      console.error(`Error saving ${key} to localStorage:`, error);
-    }
-  }, [key, storedValue]);
-  return [storedValue, setValue];
-};
-const TAILWIND_COLORS = ['red', 'green', 'blue', 'yellow', 'purple', 'pink', 'orange', 'teal', 'indigo', 'gray'];
 const InputField = ({ label, value, onChange, placeholder, onKeyDown }) => (
   <div className="space-y-2">
     {label && <label className="text-sm font-medium text-gray-200">{label}</label>}
@@ -93,6 +18,7 @@ const InputField = ({ label, value, onChange, placeholder, onKeyDown }) => (
     />
   </div>
 );
+
 const ListItem = ({ name, color, onEdit, onDelete }) => (
   <div className="flex items-center justify-between p-2 bg-gray-700/50 rounded hover:bg-gray-700 transition-colors">
     <div className="flex items-center gap-2">
@@ -109,70 +35,6 @@ const ListItem = ({ name, color, onEdit, onDelete }) => (
     </div>
   </div>
 );
-
-const HomeworkTypesCard = ({ homeworkTypes, setHomeworkTypes }) => {
-  const [newTypeName, setNewTypeName] = useState('');
-  const [selectedColor, setSelectedColor] = useState('green');
-  const addHomeworkType = useCallback(() => {
-    if (newTypeName.trim()) {
-      setHomeworkTypes(prev => {
-        if (prev.some(type => type.name === newTypeName.trim())) return prev;
-        return [...prev, { id: Date.now().toString(), name: newTypeName.trim(), color: selectedColor }];
-      });
-      setNewTypeName('');
-    }
-  }, [newTypeName, selectedColor, setHomeworkTypes]);
-  return (
-    <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-      <h2 className="text-xl font-semibold text-gray-100 mb-6">أنواع الواجبات</h2>
-      <div className="space-y-4">
-        <div className="flex gap-2">
-          <input
-            className="flex-1 h-10 rounded-md border border-gray-700 bg-gray-800/50 px-3 py-2 text-sm text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            value={newTypeName}
-            onChange={(e) => setNewTypeName(e.target.value)}
-            placeholder="نوع الواجب"
-            onKeyDown={(e) => e.key === 'Enter' && addHomeworkType()}
-          />
-          <select
-            value={selectedColor}
-            onChange={(e) => setSelectedColor(e.target.value)}
-            className="h-10 rounded-md border border-gray-700 bg-gray-800/50 px-3 py-2 text-sm text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            {TAILWIND_COLORS.map(color => (
-              <option key={color} value={color}>{color}</option>
-            ))}
-          </select>
-          <button
-            onClick={addHomeworkType}
-            className="inline-flex items-center justify-center rounded-md h-10 px-4 bg-blue-600 hover:bg-blue-700 transition-colors text-white"
-          >
-            <Plus className="h-4 w-4 inline-block ml-2" />
-            إضافة
-          </button>
-        </div>
-        <div className="space-y-2 max-h-[300px] overflow-y-auto">
-          {homeworkTypes.map((type) => (
-            <ListItem
-              key={type.id}
-              name={type.name}
-              color={type.color}
-              onEdit={() => {
-                const newName = window.prompt('تعديل نوع الواجب', type.name);
-                if (newName?.trim()) {
-                  setHomeworkTypes(prev => prev.map(t =>
-                    t.id === type.id ? { ...t, name: newName.trim() } : t
-                  ));
-                }
-              }}
-              onDelete={() => setHomeworkTypes(prev => prev.filter(t => t.id !== type.id))}
-            />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-};
 
 const StudentsCard = ({ students, setStudents, newStudentName, setNewStudentName }) => {
   const addStudent = useCallback(() => {
@@ -411,7 +273,8 @@ const LinkCreator = () => {
   const [students, setStudents] = useState([]);
   const [newTeacherName, setNewTeacherName] = useState('');
   const [teachers, setTeachers] = useState([]);
-  const [homeworkTypes, setHomeworkTypes] = useState([]);
+  const [homeworkTypes, setHomeworkTypes] = useState({});
+  const [useDefaultTypes, setUseDefaultTypes] = useState(true);
   const [copyStatus, setCopyStatus] = useState('initial');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [linkInput, setLinkInput] = useState('');
@@ -448,6 +311,17 @@ const LinkCreator = () => {
         name
       })));
 
+      // Handle homework types
+      if (decodedData.homeworkTypes && Object.keys(decodedData.homeworkTypes).length > 0) {
+        setHomeworkTypes(decodedData.homeworkTypes);
+        // Since we have custom homework types, we should disable default types
+        setUseDefaultTypes(false);
+      } else {
+        // If no homework types in the link or empty object, use defaults
+        setHomeworkTypes(DEFAULT_HOMEWORK_TYPES);
+        setUseDefaultTypes(true);
+      }
+
       setIsModalOpen(false);
       setLinkInput('');
       showNotification('تم تحميل البيانات بنجاح');
@@ -456,7 +330,7 @@ const LinkCreator = () => {
     } finally {
       setLoadingLink(false);
     }
-  }, [linkInput, setSchoolName, setClassName, showNotification]);
+  }, [linkInput, setSchoolName, setClassName, setHomeworkTypes, showNotification]);
 
   // Form validation
   const isFormValid = schoolName.trim() && className.trim() && students.length > 0;
@@ -473,7 +347,7 @@ const LinkCreator = () => {
       className,
       students: students.map(s => s.name),
       teachers: teachers.map(t => t.name),
-      homeworkTypes: homeworkTypes
+      homeworkTypes: Object.keys(homeworkTypes).length > 0 ? homeworkTypes : DEFAULT_HOMEWORK_TYPES
     };
 
     try {
@@ -515,6 +389,8 @@ const LinkCreator = () => {
             <HomeworkTypesCard
               homeworkTypes={homeworkTypes}
               setHomeworkTypes={setHomeworkTypes}
+              useDefaultTypes={useDefaultTypes}
+              setUseDefaultTypes={setUseDefaultTypes}
             />
           </div>
           <StudentsCard
