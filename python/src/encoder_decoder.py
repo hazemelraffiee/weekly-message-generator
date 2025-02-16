@@ -1,7 +1,8 @@
 import base64
 import json
+from urllib.parse import unquote
 import zlib
-from typing import Dict, Union, Any, Tuple
+from typing import Dict, Optional, Union, Any, Tuple
 
 def extract_header_and_data(encoded_string: str) -> Tuple[Dict[str, str], str]:
     """
@@ -32,84 +33,78 @@ def extract_header_and_data(encoded_string: str) -> Tuple[Dict[str, str], str]:
     # If no header found, return empty header and the full string as data
     return header_info, encoded_string.strip()
 
-def decode_data(encoded_string: str) -> Dict[str, Any]:
+def decode_data(compressed: str) -> Optional[Dict[str, Any]]:
     """
-    Decodes the compressed and base64 encoded string back into the original data structure.
+    Decodes a compressed string using the same algorithm as the JS version.
     
     Args:
-        encoded_string: The encoded string from the clipboard
+        compressed: The compressed string to decode
         
     Returns:
-        A dictionary containing the decoded data structure
-        
-    Raises:
-        ValueError: If the string cannot be decoded properly
-        json.JSONDecodeError: If the decompressed data is not valid JSON
+        The decoded data structure, or None if decoding fails
     """
     try:
-        # Extract header if present
-        header_info, compressed_data = extract_header_and_data(encoded_string.strip())
+        if not compressed or not isinstance(compressed, str):
+            return None
+
+        # URL decode first, matching JS decodeURIComponent
+        url_decoded = unquote(compressed)
         
+        # Restore base64 padding and characters, matching JS version
+        base64_str = url_decoded.replace('-', '+').replace('_', '/')
+        while len(base64_str) % 4:
+            base64_str += '='
+            
         # Decode base64
-        binary_data = base64.b64decode(compressed_data)
+        binary_data = base64.b64decode(base64_str)
         
-        # Decompress using zlib with parameters matching pako
-        decompressed_data = zlib.decompress(
-            binary_data,
-            wbits=15  # Must match pako's windowBits parameter
-        )
+        # Decompress using zlib (equivalent to pako.inflate)
+        decompressed_data = zlib.decompress(binary_data, wbits=15)
         
-        # Decode UTF-8 and parse JSON
-        json_str = decompressed_data.decode('utf-8')
-        data = json.loads(json_str)
+        # Decode to UTF-8 string
+        text = decompressed_data.decode('utf-8')
         
-        # If we found header info, add it to the metadata
-        if header_info['class_name'] or header_info['date']:
-            if 'metadata' not in data:
-                data['metadata'] = {}
-            data['metadata'].update({
-                'header_class_name': header_info['class_name'],
-                'header_date': header_info['date']
-            })
-        
-        return data
-        
-    except base64.binascii.Error as e:
-        raise ValueError(f"Invalid base64 encoding: {str(e)}")
-    except zlib.error as e:
-        raise ValueError(f"Decompression failed: {str(e)}")
-    except json.JSONDecodeError as e:
-        raise ValueError(f"Invalid JSON data: {str(e)}")
+        # Try to parse as JSON
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            return text
+            
     except Exception as e:
-        raise ValueError(f"Decoding failed: {str(e)}")
+        print('Decompression error:', str(e))
+        return None
 
 def encode_data(data: Dict[str, Any]) -> str:
     """
-    Encodes a dictionary into a compressed and base64-encoded string.
+    Encodes data into a compressed, URL-safe string matching the JS implementation.
     
     Args:
-        data: The dictionary to encode.
+        data: Dictionary or string to encode
         
     Returns:
-        A base64-encoded, compressed string.
-        
-    Raises:
-        ValueError: If the data cannot be serialized properly.
+        A URL-safe compressed string
     """
     try:
-        # Convert dictionary to JSON string
-        json_str = json.dumps(data, ensure_ascii=False, separators=(',', ':'))
+        # Convert to JSON string if input is a dictionary
+        if isinstance(data, dict):
+            text = json.dumps(data, ensure_ascii=False, separators=(',', ':'))
+        else:
+            text = str(data)
         
-        # Compress the JSON string using zlib with matching parameters
-        compressed_data = zlib.compress(json_str.encode('utf-8'), level=9)
-
-        # Encode the compressed data in base64
-        encoded_string = base64.b64encode(compressed_data).decode('utf-8')
-
-        return encoded_string
-
-    except (TypeError, ValueError) as e:
-        raise ValueError(f"Encoding failed: {str(e)}")
+        # Compress the string using zlib (equivalent to pako.deflate)
+        compressed_data = zlib.compress(text.encode('utf-8'), level=9)
+        
+        # Encode to base64
+        base64_str = base64.b64encode(compressed_data).decode('utf-8')
+        
+        # Make URL-safe by replacing characters and removing padding
+        url_safe = base64_str.rstrip('=').replace('+', '-').replace('/', '_')
+        
+        return url_safe
+        
+    except Exception as e:
+        print('Compression error:', str(e))
+        return None
 
 def _test_decoder():
     # Example encoded string (this would normally come from the clipboard)

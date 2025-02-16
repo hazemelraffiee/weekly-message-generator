@@ -180,6 +180,9 @@ class ExcelProcessor:
             for hw_type in homework_types:
                 if hw_type in homework_data.previous_homework:
                     grade = homework_data.previous_homework[hw_type].get(student_name, '')
+                    if not grade:
+                        continue
+                    grade = float(grade)
                     formula_ws.cell(row=date_row, column=current_col, value=grade)
                 current_col += 1
             
@@ -188,8 +191,8 @@ class ExcelProcessor:
             for hw_type in homework_types:
                 content = ''
                 for assignment in homework_data.homework['assignments']:
-                    if (assignment['type'] == hw_type and 
-                        student_name in assignment['assignedStudents']):
+                    is_assignment_relevant = not(assignment['assignedStudents']) or student_name in assignment['assignedStudents']
+                    if (assignment['type'] == hw_type and is_assignment_relevant):
                         content = assignment['content']
                         break
                 formula_ws.cell(row=date_row, column=current_col, value=content)
