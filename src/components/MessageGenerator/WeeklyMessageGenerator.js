@@ -26,15 +26,8 @@ import OldHomeworkGradingSection from '@/components/MessageGenerator/OldHomework
 import HomeworkSection from '@/components/MessageGenerator/HomeworkSection';
 import Section from '@/components/MessageGenerator/Section';
 import ExportDataButton from '@/components/MessageGenerator/ExportDataButton';
+import DateWarningModal from '@/components/MessageGenerator/DateWarningModal';
 import { decompress } from '@/utils/dataUtils';
-
-const PILOT_CLASSES = [
-  'الفوج الرابع'
-];
-
-const isPilotClass = (className) => {
-  return PILOT_CLASSES.includes(className) || true;
-};
 
 const useLocalStorage = (key, initialValue) => {
   const isHydrated = useHydration();
@@ -93,6 +86,7 @@ const WeeklyMessageGenerator = () => {
   });
   const [isMounted, setIsMounted] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [showDateWarning, setShowDateWarning] = useState(false);
 
   const [isLoading, setIsLoading] = useState(true);
 
@@ -561,32 +555,32 @@ const WeeklyMessageGenerator = () => {
   // Effect to decode and validate data parameter
   useEffect(() => {
     if (typeof window === 'undefined') return;
-  
+
     const params = new URLSearchParams(window.location.search);
     const encodedData = params.get('data');
-  
+
     if (encodedData) {
       try {
         // Try new format first (decompress)
         let decodedData;
         try {
           decodedData = decompress(encodedData);
-          if(decodedData == null){
+          if (decodedData == null) {
             decodedData = decodeData(encodedData);
           }
         } catch (e) {
           console.error('Error decoding data:', e);
         }
-  
+
         if (decodedData && decodedData.className && Array.isArray(decodedData.students)) {
           let homeworkTypesObj = DEFAULT_HOMEWORK_TYPES;
-  
+
           if (decodedData.homeworkTypes) {
             // Check if it's the simplified format (where values are color strings)
             const isSimplifiedFormat = Object.values(decodedData.homeworkTypes).every(
               value => typeof value === 'string'
             );
-  
+
             if (isSimplifiedFormat) {
               // Convert simplified format to full format
               homeworkTypesObj = Object.entries(decodedData.homeworkTypes).reduce((acc, [label, color]) => {
@@ -603,7 +597,7 @@ const WeeklyMessageGenerator = () => {
               homeworkTypesObj = decodedData.homeworkTypes;
             }
           }
-  
+
           setCoreData({
             schoolName: decodedData.schoolName || '',
             className: decodedData.className,
@@ -614,7 +608,7 @@ const WeeklyMessageGenerator = () => {
             teachers: decodedData.teachers || [],
             homeworkTypes: homeworkTypesObj
           });
-  
+
           setHomeworkGrades(prev => ({
             ...prev,
             types: homeworkTypesObj
@@ -647,9 +641,15 @@ const WeeklyMessageGenerator = () => {
   // Ensure date is formatted immediately when component mounts
   useEffect(() => {
     if (!reportDate && typeof window !== 'undefined') {
-      setReportDate(new Date().toISOString().split('T')[0]);
+      const today = new Date().toISOString().split('T')[0];
+      setReportDate(today);
+    } else if (typeof window !== 'undefined' && isMounted) {
+      const today = new Date().toISOString().split('T')[0];
+      if (reportDate !== today) {
+        setShowDateWarning(true);
+      }
     }
-  }, []);
+  }, [isMounted]);
 
   // Show error state if we don't have valid core data
   if (!coreData) {
@@ -927,27 +927,26 @@ const WeeklyMessageGenerator = () => {
         </Section>
 
         {/* Previous Homework Grading Section */}
-        {isPilotClass(coreData.className) && (
-          <Section
-            icon={GraduationCap}
-            iconColorClass="text-purple-400"
-            iconBgClass="bg-purple-900/30"
-            title="تقييم الواجبات السابقة"
-            className="mb-4"
-            collapsible={true}
-            defaultExpanded={false}
-          >
-            <div>
-              <OldHomeworkGradingSection
-                students={coreData.students}
-                types={coreData.homeworkTypes}
-                grades={homeworkGrades}
-                attendance={attendance}
-                onGradesChange={handleGradesChange}
-              />
-            </div>
-          </Section>
-        )}
+        <Section
+          icon={GraduationCap}
+          iconColorClass="text-purple-400"
+          iconBgClass="bg-purple-900/30"
+          title="تقييم الواجبات السابقة"
+          className="mb-4"
+          collapsible={true}
+          defaultExpanded={false}
+        >
+          <div>
+            <OldHomeworkGradingSection
+              students={coreData.students}
+              types={coreData.homeworkTypes}
+              grades={homeworkGrades}
+              attendance={attendance}
+              onGradesChange={handleGradesChange}
+            />
+          </div>
+        </Section>
+
 
         {/* New Homework Assignment Section */}
         <Section
@@ -1106,19 +1105,17 @@ const WeeklyMessageGenerator = () => {
               </button>
             </div>
 
-            {isPilotClass(coreData.className) && (
-              <ExportDataButton
-                coreData={coreData}
-                reportDate={reportDate}
-                formattedDate={formattedDate}
-                attendance={attendance}
-                homework={homework}
-                homeworkGrades={homeworkGrades}
-                onError={(error) => {
-                  console.error('Export failed:', error);
-                }}
-              />
-            )}
+            <ExportDataButton
+              coreData={coreData}
+              reportDate={reportDate}
+              formattedDate={formattedDate}
+              attendance={attendance}
+              homework={homework}
+              homeworkGrades={homeworkGrades}
+              onError={(error) => {
+                console.error('Export failed:', error);
+              }}
+            />
           </div>
         </div>
       </div>
@@ -1127,6 +1124,21 @@ const WeeklyMessageGenerator = () => {
 
   return (
     <>
+      {showDateWarning && (
+        <DateWarningModal
+          selectedDate={reportDate}
+          todayDate={new Date().toISOString().split('T')[0]}
+          onStartNew={() => {
+            const today = new Date().toISOString().split('T')[0];
+            setReportDate(today);
+            clearData();
+            setShowDateWarning(false);
+          }}
+          onKeepCurrent={() => {
+            setShowDateWarning(false);
+          }}
+        />
+      )}
       {showConfirmation && renderConfirmationModal()}
       {renderContent()}
     </>
