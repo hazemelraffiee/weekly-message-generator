@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { X } from 'lucide-react';
+import { X, Trash2 } from 'lucide-react';
 import useClickOutside from '@/hooks/useClickOutside';
 
 const germanGrades = [
@@ -50,13 +50,29 @@ const QuickSelectionGrid = ({
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div ref={modalRef} className="bg-gray-800 rounded-lg p-4 w-full max-w-md">
-        <div className="flex flex-col gap-2 mb-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              <span className="font-medium text-gray-200">{studentName}</span>
-              <span className="text-gray-500">•</span>
-              <span className="text-gray-400">{homeworkType}</span>
-            </div>
+
+        {/* Dialog header */}
+        <div className="flex items-center justify-between mb-4">
+          {/* Title / Info */}
+          <div className="flex flex-col">
+            <span className="font-medium text-gray-200">{studentName}</span>
+            <span className="text-gray-400 text-sm">{homeworkType}</span>
+          </div>
+
+          {/* Buttons row */}
+          <div className="flex items-center gap-2">
+            {/* Clear button */}
+            <button
+              onClick={() => {
+                onSelect(null);
+                onClose();
+              }}
+              className="p-2 rounded-md text-red-400 hover:bg-red-800/30"
+            >
+              <Trash2 className="w-5 h-5" />
+            </button>
+
+            {/* Close button */}
             <button
               onClick={onClose}
               className="p-2 hover:bg-gray-700 rounded-full"
@@ -65,20 +81,27 @@ const QuickSelectionGrid = ({
             </button>
           </div>
         </div>
+
+        {/* Grade selection grid */}
         <div className="grid grid-cols-3 gap-4">
-          {grades.map(grade => (
+          {grades.map((grade) => (
             <button
               key={grade}
               onClick={() => {
                 onSelect(grade);
                 onClose();
               }}
-              className={`${getGradeColor(grade, system, min, max)} 
-                p-4 rounded-lg text-lg font-medium
-                hover:opacity-80 active:scale-95 
-                transition-all duration-200
-                min-h-[64px]
-                ${currentGrade === grade ? 'ring-2 ring-blue-500 ring-offset-2 ring-offset-gray-800' : ''}`}
+              className={`
+                  ${getGradeColor(grade, system, min, max)}
+                  p-4 rounded-lg text-lg font-medium
+                  hover:opacity-80 active:scale-95
+                  transition-all duration-200
+                  min-h-[64px]
+                  ${currentGrade === grade
+                  ? "ring-2 ring-blue-500 ring-offset-2 ring-offset-gray-800"
+                  : ""
+                }
+                `}
             >
               {grade.toFixed(1)}
             </button>
