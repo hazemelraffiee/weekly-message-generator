@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Copy, Check } from 'lucide-react';
 import { decompress } from '../../utils/dataUtils';
 import GradingTable from '@/components/Common/GradingTable';
 import GradeDisplay from '@/components/Common/GradeDisplay';
@@ -59,7 +58,7 @@ export default function ExamGrading() {
 
     const studentGrades = grades[studentId];
     const studentExemptions = exemptions[studentId] || {};
-    
+
     let weightedSum = 0;
     let totalWeightUsed = 0;
 
@@ -68,7 +67,7 @@ export default function ExamGrading() {
       if (studentExemptions[section.id]) {
         return;
       }
-      
+
       const grade = studentGrades[section.id];
       if (typeof grade === 'number') {
         weightedSum += (grade * section.weight);
@@ -84,7 +83,7 @@ export default function ExamGrading() {
     setGrades(prev => {
       const newGrades = { ...prev };
       if (!newGrades[studentId]) newGrades[studentId] = {};
-      
+
       if (value === null) {
         // If removing grade
         delete newGrades[studentId][sectionId];
@@ -94,7 +93,7 @@ export default function ExamGrading() {
       } else {
         newGrades[studentId][sectionId] = value;
       }
-      
+
       return newGrades;
     });
 
@@ -117,12 +116,12 @@ export default function ExamGrading() {
   const handleExemptChange = (studentId, sectionId, isExempt) => {
     setExemptions(prev => {
       const newExemptions = { ...prev };
-      
+
       if (isExempt) {
         // Setting exemption
         if (!newExemptions[studentId]) newExemptions[studentId] = {};
         newExemptions[studentId][sectionId] = true;
-        
+
         // Remove any existing grade for this section
         setGrades(prevGrades => {
           const newGrades = { ...prevGrades };
@@ -143,7 +142,7 @@ export default function ExamGrading() {
           }
         }
       }
-      
+
       return newExemptions;
     });
   };
@@ -182,7 +181,7 @@ export default function ExamGrading() {
   const renderGradeCell = (student, sectionId, currentValue, section) => {
     const studentId = student.id;
     const isExempt = exemptions[studentId]?.[sectionId] === true;
-    
+
     return (
       <div className="w-full text-center">
         <GradeDisplay
@@ -216,25 +215,50 @@ export default function ExamGrading() {
     return '📚';
   };
 
-  // Helper function to get grade description in Arabic
-  const getGradeDescription = (grade) => {
-    const numGrade = parseFloat(grade);
-    if (numGrade <= 1.3) return 'ممتاز جداً - أداء متميز';
-    if (numGrade <= 2.3) return 'جيد جداً - أداء فوق المتوسط';
-    if (numGrade <= 3.3) return 'جيد - أداء مُرضي';
-    if (numGrade <= 4.0) return 'مقبول - يحتاج إلى تحسين';
-    if (numGrade <= 5.0) return 'ضعيف - يحتاج إلى دعم إضافي';
-    return 'غير مُرضي - يتطلب مراجعة شاملة';
-  };
-
   // Check if a student has all required sections graded or exempt
   const isStudentFullyGraded = (studentId) => {
     const studentGrades = grades[studentId] || {};
     const studentExemptions = exemptions[studentId] || {};
-    
-    return examConfig.sections.every(section => 
+
+    return examConfig.sections.every(section =>
       typeof studentGrades[section.id] === 'number' || studentExemptions[section.id] === true
     );
+  };
+
+  const formatDate = (dateStr) => {
+    const date = new Date(dateStr);
+    const options = {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    };
+
+    // Format Gregorian date
+    const gregorianFormatter = new Intl.DateTimeFormat('ar', options);
+    const gregorianParts = gregorianFormatter.formatToParts(date);
+    let gregorianDate = '';
+
+    gregorianParts.forEach(part => {
+      if (part.type === 'weekday') gregorianDate += part.value + '، ';
+      else if (['day', 'month', 'year'].includes(part.type)) gregorianDate += part.value + ' ';
+      else if (part.type === 'literal' && part.value !== '، ') gregorianDate += part.value;
+    });
+    gregorianDate = gregorianDate.trim() + ' م';
+
+    // Format Hijri date using Umm al-Qura calendar
+    const hijriFormatter = new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura', options);
+    const hijriParts = hijriFormatter.formatToParts(date);
+    let hijriDate = '';
+
+    hijriParts.forEach(part => {
+      if (part.type === 'weekday') hijriDate += part.value + '، ';
+      else if (['day', 'month', 'year'].includes(part.type)) hijriDate += part.value + ' ';
+      else if (part.type === 'literal' && part.value !== '، ') hijriDate += part.value;
+    });
+    hijriDate = hijriDate.trim() + ' هـ';
+
+    return `${hijriDate} الموافق ${gregorianDate}`;
   };
 
   // If no exam configuration is available, show loading or error
@@ -283,7 +307,7 @@ export default function ExamGrading() {
                 <span className="font-medium">{data.students.length}</span>
                 <span className="text-xs text-gray-500 mr-1">
                   ({(() => {
-                    const completedCount = data.students.filter(student => 
+                    const completedCount = data.students.filter(student =>
                       isStudentFullyGraded(student.id)
                     ).length;
                     return `${completedCount} مكتمل`;
@@ -295,7 +319,7 @@ export default function ExamGrading() {
                 <span className="font-medium">
                   {(() => {
                     // Only include students with complete grading in the average
-                    const gradedStudents = data.students.filter(student => 
+                    const gradedStudents = data.students.filter(student =>
                       isStudentFullyGraded(student.id)
                     );
 
@@ -318,10 +342,10 @@ export default function ExamGrading() {
             {data.students.map(student => {
               const fullyGraded = isStudentFullyGraded(student.id);
               const finalGrade = fullyGraded ? calculateGrade(student.id) : null;
-              
+
               // Count exempt sections for this student
               const exemptCount = Object.keys(exemptions[student.id] || {}).length;
-              
+
               return (
                 <div key={student.id} className="bg-gray-700/30 rounded-lg border border-gray-700/50 hover:border-gray-600/50 transition-colors overflow-hidden">
                   <div className="p-3">
@@ -332,8 +356,8 @@ export default function ExamGrading() {
                       </div>
                       {finalGrade !== null ? (
                         <span className={`px-2 py-1 rounded-md text-sm font-bold shrink-0 ${finalGrade <= 2.5 ? 'bg-green-500/20 text-green-300' :
-                            finalGrade <= 4.0 ? 'bg-yellow-500/20 text-yellow-300' :
-                              'bg-red-500/20 text-red-300'
+                          finalGrade <= 4.0 ? 'bg-yellow-500/20 text-yellow-300' :
+                            'bg-red-500/20 text-red-300'
                           }`}>
                           {finalGrade.toFixed(1)}
                           {exemptCount > 0 && <sup className="text-purple-300 text-xs ml-0.5">*</sup>}
@@ -378,12 +402,7 @@ export default function ExamGrading() {
                   examSections: examConfig.sections
                 }}
                 reportDate={new Date().toISOString().split('T')[0]}
-                formattedDate={new Date().toLocaleDateString('ar-SA', {
-                  weekday: 'long',
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                })}
+                formattedDate={formatDate(new Date())}
                 attendance={{}} // No attendance for exams
                 homework={{}} // No homework for exams
                 homeworkGrades={{
