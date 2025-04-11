@@ -184,7 +184,6 @@ export default function ExamGrading() {
             types={getSectionsAsTypes()}
             grades={grades}
             comments={comments}
-            onGradeChange={handleGradeChange}
             onCommentChange={handleCommentChange}
             renderGradeCell={renderGradeCell}
             className="mb-8"

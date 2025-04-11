@@ -102,7 +102,6 @@ const GradingTable = ({
   grades = {},
   comments = {},
   attendance = {},
-  onGradeChange,
   onCommentChange,
   renderGradeCell,
   className = "",

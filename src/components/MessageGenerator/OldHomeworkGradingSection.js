@@ -70,7 +70,6 @@ const OldHomeworkGradingSection = ({ students, types, grades, attendance, onGrad
       grades={grades.grades}
       comments={grades.comments}
       attendance={attendance}
-      onGradeChange={handleGrade}
       onCommentChange={handleComment}
       renderGradeCell={renderGradeCell}
       className="mb-8"
