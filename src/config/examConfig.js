@@ -5,6 +5,15 @@
  */
 export const examConfigs = {
   // Example class configurations
+  "الفوج التمهيدي - القاعدة النورانية": {
+    examName: "اختبار الفصل الدراسي الثاني",
+    sections: [
+      { id: "memorization", name: "حفظ", weight: 2 },
+      { id: "tajweed", name: "تجويد", weight: 2 },
+      { id: "nouraneya", name: "القاعدة النورانية", weight: 3 },
+      { id: "extra_memorization", name: "حفظ إضافي - الحزب الـ 60", weight: 3 },
+    ]
+  },
 
   // Default configuration used when class name is not found
   "default": {

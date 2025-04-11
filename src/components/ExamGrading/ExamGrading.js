@@ -1,16 +1,184 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { decompress } from '../../utils/dataUtils';
 import GradingTable from '@/components/Common/GradingTable';
 import GradeDisplay from '@/components/Common/GradeDisplay';
 import ExportDataButton from '@/components/MessageGenerator/ExportDataButton';
 import { getExamConfig } from '@/config/examConfig';
+import { PenLine, GraduationCap, Loader2, Info, X } from 'lucide-react';
+import { useHydration } from '@/context/HydrationContext';
+import useClickOutside from '@/hooks/useClickOutside';
+
+// Grade Explanation Dialog Component
+const GradeExplanationDialog = ({ student, grades, exemptions, examConfig, onClose }) => {
+  const dialogRef = useRef(null);
+  useClickOutside(dialogRef, onClose);
+  
+  const studentId = student.id;
+  const studentGrades = grades[studentId] || {};
+  const studentExemptions = exemptions[studentId] || {};
+  
+  // Calculate weighted average details for explanation
+  let totalWeightUsed = 0;
+  let totalWeightedScore = 0;
+  
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div ref={dialogRef} className="bg-gray-800 rounded-lg p-4 w-full max-w-lg">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-medium">حساب درجة {student.name}</h3>
+          <button 
+            onClick={onClose}
+            className="p-2 hover:bg-gray-700 rounded-full"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        
+        <div className="space-y-4">
+          <div className="bg-gray-700/30 p-4 rounded-lg">
+            <h4 className="font-medium mb-2">طريقة حساب الدرجة النهائية</h4>
+            <p className="text-sm text-gray-300">
+              يتم حساب الدرجة النهائية بناءً على المتوسط المرجح لدرجات الأقسام، مع مراعاة وزن كل قسم.
+              {Object.keys(studentExemptions).length > 0 && " الأقسام المعفى منها لا تدخل في حساب المتوسط."}
+            </p>
+          </div>
+          
+          <div className="border border-gray-700 rounded-lg overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-700/50">
+                  <th className="p-2 text-right">القسم</th>
+                  <th className="p-2 text-center">الدرجة</th>
+                  <th className="p-2 text-center">الوزن</th>
+                  <th className="p-2 text-center">النتيجة المرجحة</th>
+                </tr>
+              </thead>
+              <tbody>
+                {examConfig.sections.map(section => {
+                  const sectionId = section.id;
+                  const grade = studentGrades[sectionId];
+                  const isExempt = studentExemptions[sectionId];
+                  const weight = section.weight;
+                  
+                  // Calculations for weighted average
+                  let weightedScore = null;
+                  if (!isExempt && typeof grade === 'number') {
+                    weightedScore = grade * weight;
+                    totalWeightedScore += weightedScore;
+                    totalWeightUsed += weight;
+                  }
+                  
+                  return (
+                    <tr key={sectionId} className="border-t border-gray-700">
+                      <td className="p-2 text-right">{section.name}</td>
+                      <td className="p-2 text-center">
+                        {isExempt ? (
+                          <span className="text-purple-300">معفى</span>
+                        ) : typeof grade === 'number' ? (
+                          <span className={`px-2 py-0.5 rounded ${
+                            grade <= 2.5 ? 'bg-green-500/20 text-green-300' :
+                            grade <= 4.0 ? 'bg-yellow-500/20 text-yellow-300' :
+                            'bg-red-500/20 text-red-300'
+                          }`}>
+                            {grade.toFixed(1)}
+                          </span>
+                        ) : (
+                          <span className="text-gray-500">غير مقيم</span>
+                        )}
+                      </td>
+                      <td className="p-2 text-center">{weight}</td>
+                      <td className="p-2 text-center">
+                        {weightedScore !== null ? weightedScore.toFixed(1) : '-'}
+                      </td>
+                    </tr>
+                  );
+                })}
+                <tr className="bg-gray-700/30 font-medium">
+                  <td className="p-2 text-right" colSpan="2">المجموع</td>
+                  <td className="p-2 text-center">{totalWeightUsed}</td>
+                  <td className="p-2 text-center">{totalWeightedScore.toFixed(1)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          
+          <div className="bg-blue-900/30 p-4 rounded-lg">
+            <div className="flex items-center justify-between">
+              <span className="font-medium">الدرجة النهائية:</span>
+              <span className="font-bold text-lg">
+                {totalWeightUsed > 0 ? (totalWeightedScore / totalWeightUsed).toFixed(1) : '-'}
+              </span>
+            </div>
+            <div className="text-sm text-gray-300 mt-2">
+              تم حساب الدرجة بقسمة مجموع الدرجات المرجحة ({totalWeightedScore.toFixed(1)}) على مجموع الأوزان ({totalWeightUsed})
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Custom hook for localStorage persistence
+const useLocalStorage = (key, initialValue) => {
+  const isHydrated = useHydration();
+  const [state, setState] = useState(() => {
+    // During SSR or before hydration, return initial value
+    if (!isHydrated) return initialValue;
+
+    try {
+      const item = localStorage.getItem(`examGrading_${key}`);
+      return item ? JSON.parse(item) : initialValue;
+    } catch (error) {
+      console.error(`Error loading ${key} from localStorage:`, error);
+      return initialValue;
+    }
+  });
+
+  useEffect(() => {
+    if (!isHydrated) return;
+
+    try {
+      localStorage.setItem(`examGrading_${key}`, JSON.stringify(state));
+    } catch (error) {
+      console.error(`Error saving ${key} to localStorage:`, error);
+    }
+  }, [key, state, isHydrated]);
+
+  return [state, setState];
+};
 
 export default function ExamGrading() {
+  const isHydrated = useHydration();
+  const [isMounted, setIsMounted] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [activeExplanationStudent, setActiveExplanationStudent] = useState(null);
+
+  // Replace useState with useLocalStorage for persistent data
   const [data, setData] = useState(null);
   const [examConfig, setExamConfig] = useState(null);
-  const [grades, setGrades] = useState({});
-  const [comments, setComments] = useState({});
-  const [exemptions, setExemptions] = useState({}); // Track exemptions
+  const [grades, setGrades] = useLocalStorage('grades', {});
+  const [comments, setComments] = useLocalStorage('comments', {});
+  const [exemptions, setExemptions] = useLocalStorage('exemptions', {});
+
+  // Function to clear data with confirmation
+  const clearData = useCallback(() => {
+    // First clear the in-memory states immediately
+    setGrades({});
+    setComments({});
+    setExemptions({});
+    
+    // Then clear localStorage
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('examGrading_')) {
+        localStorage.removeItem(key);
+      }
+    });
+
+    // Force a complete refresh to ensure clean slate
+    window.location.reload();
+  }, [setGrades, setComments, setExemptions]);
 
   // Load data from URL parameters
   useEffect(() => {
@@ -37,20 +205,13 @@ export default function ExamGrading() {
         console.error("Error decoding URL data:", err);
       }
     }
+    setIsLoading(false);
   }, []);
 
-  // Error state if data couldn't be loaded
-  if (!data) return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-900 text-gray-100" dir="rtl">
-      <div className="max-w-md text-center p-8">
-        <h1 className="text-2xl font-bold mb-4 text-red-500">خطأ في البيانات</h1>
-        <p className="mb-6">عذراً، لا يمكن عرض الصفحة. يرجى التأكد من صحة الرابط.</p>
-        <a href="/linkcreator" className="inline-flex px-6 py-3 rounded-md bg-blue-600 hover:bg-blue-700">
-          العودة إلى صفحة إنشاء الرابط
-        </a>
-      </div>
-    </div>
-  );
+  // Set component as mounted on initial render
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Calculate the final grade for a student based on weighted average
   const calculateGrade = (studentId) => {
@@ -177,7 +338,7 @@ export default function ExamGrading() {
     return types;
   };
 
-  // Custom renderer for grade cells in the table - using GradeDisplay to match homework grading UI
+  // Custom renderer for grade cells in the table
   const renderGradeCell = (student, sectionId, currentValue, section) => {
     const studentId = student.id;
     const isExempt = exemptions[studentId]?.[sectionId] === true;
@@ -191,7 +352,7 @@ export default function ExamGrading() {
           min={1.0}
           max={6.0}
           isExempt={isExempt}
-          showExemptOption={true} // Only in exam grading
+          showExemptOption={true}
           onChange={(value) => handleGradeChange(student.id, sectionId, value)}
           onExempt={(exempt) => handleExemptChange(student.id, sectionId, exempt)}
           placeholder={(() => {
@@ -261,7 +422,63 @@ export default function ExamGrading() {
     return `${hijriDate} الموافق ${gregorianDate}`;
   };
 
-  // If no exam configuration is available, show loading or error
+  // Render confirmation modal
+  const renderConfirmationModal = () => (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-gray-800 rounded-lg p-6 max-w-sm w-full shadow-lg">
+        <h3 className="text-lg font-semibold text-gray-100 mb-4">
+          هل أنت متأكد؟
+        </h3>
+        <p className="text-sm text-gray-400 mb-6">
+          سيتم مسح جميع البيانات الحالية وبدء اختبار جديد. لا يمكن التراجع عن هذا الإجراء.
+        </p>
+        <div className="flex justify-end gap-4">
+          <button
+            onClick={() => setShowConfirmation(false)}
+            className="px-4 py-2 rounded-md bg-gray-600 text-gray-100 hover:bg-gray-700 transition-colors"
+          >
+            إلغاء
+          </button>
+          <button
+            onClick={() => {
+              clearData();
+              setShowConfirmation(false);
+            }}
+            className="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700 transition-colors"
+          >
+            تأكيد
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Error state if data couldn't be loaded
+  if (!data && !isLoading) return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-900 text-gray-100" dir="rtl">
+      <div className="max-w-md text-center p-8">
+        <h1 className="text-2xl font-bold mb-4 text-red-500">خطأ في البيانات</h1>
+        <p className="mb-6">عذراً، لا يمكن عرض الصفحة. يرجى التأكد من صحة الرابط.</p>
+        <a href="/linkcreator" className="inline-flex px-6 py-3 rounded-md bg-blue-600 hover:bg-blue-700">
+          العودة إلى صفحة إنشاء الرابط
+        </a>
+      </div>
+    </div>
+  );
+
+  // Loading state
+  if (isLoading || !isHydrated) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="flex items-center gap-3 text-lg">
+          <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+          <span>جاري التحميل...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // If no exam configuration is available, show error
   if (!examConfig) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-900 text-gray-100" dir="rtl">
@@ -275,12 +492,70 @@ export default function ExamGrading() {
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 p-4" dir="rtl">
       <div className="max-w-4xl mx-auto">
-        {/* Header section */}
+        {/* Confirmation dialog */}
+        {showConfirmation && renderConfirmationModal()}
+        
+        {/* Grade explanation dialog */}
+        {activeExplanationStudent && (
+          <GradeExplanationDialog 
+            student={activeExplanationStudent}
+            grades={grades}
+            exemptions={exemptions}
+            examConfig={examConfig}
+            onClose={() => setActiveExplanationStudent(null)}
+          />
+        )}
+        
+        {/* Header section with new exam button */}
         <div className="mb-8 bg-gradient-to-r from-blue-600 to-blue-800 rounded-lg p-6">
-          <h1 className="text-2xl font-bold mb-2">{data.className}</h1>
-          <div className="text-blue-100">{data.schoolName}</div>
-          <div className="mt-4 px-4 py-3 bg-blue-700/50 border border-blue-400/30 rounded text-white">
-            <span className="font-bold">{examConfig.examName}</span>
+          <div className="flex flex-col md:flex-row items-start justify-between gap-4 mb-4">
+            <div>
+              <h1 className="text-2xl font-bold mb-2">{data.className}</h1>
+              <div className="text-blue-100">{data.schoolName}</div>
+              <div className="mt-4 px-4 py-3 bg-blue-700/50 border border-blue-400/30 rounded text-white">
+                <span className="font-bold">{examConfig.examName}</span>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowConfirmation(true)}
+              className="w-full md:w-auto inline-flex items-center justify-center rounded-md text-sm font-medium h-11 px-5 bg-amber-600 hover:bg-amber-700 transition-colors text-white group"
+            >
+              <div className="flex items-center gap-2">
+                <PenLine className="h-5 w-5 transition-transform group-hover:scale-110" />
+                <span className="font-medium">اختبار جديد</span>
+              </div>
+            </button>
+          </div>
+          
+          {/* Status indicators */}
+          <div className="flex flex-wrap gap-3 mt-4">
+            <div className="px-3 py-1.5 bg-blue-700/30 rounded-lg flex items-center gap-2">
+              <span className="text-gray-200 text-sm">الطلاب:</span>
+              <span className="font-medium text-white">{data.students.length}</span>
+            </div>
+            <div className="px-3 py-1.5 bg-blue-700/30 rounded-lg flex items-center gap-2">
+              <span className="text-gray-200 text-sm">مكتمل:</span>
+              <span className="font-medium text-white">
+                {data.students.filter(student => isStudentFullyGraded(student.id)).length}
+              </span>
+            </div>
+            <div className="px-3 py-1.5 bg-blue-700/30 rounded-lg flex items-center gap-2">
+              <span className="text-gray-200 text-sm">متوسط الصف:</span>
+              <span className="font-medium text-white">
+                {(() => {
+                  // Only include students with complete grading in the average
+                  const gradedStudents = data.students.filter(student => isStudentFullyGraded(student.id));
+                  if (gradedStudents.length === 0) return "ــ";
+
+                  const average = gradedStudents.reduce(
+                    (sum, student) => sum + calculateGrade(student.id),
+                    0
+                  ) / gradedStudents.length;
+
+                  return average.toFixed(1);
+                })()}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -299,7 +574,7 @@ export default function ExamGrading() {
 
         {/* Results Section */}
         <div className="mt-8 border border-gray-700 rounded-lg bg-gray-800 p-6">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4">
             <h2 className="text-xl font-bold mb-2 sm:mb-0">نتائج الاختبار</h2>
             <div className="flex items-center gap-3 text-sm">
               <div className="px-3 py-1.5 bg-gray-700/50 rounded-lg">
@@ -336,6 +611,45 @@ export default function ExamGrading() {
               </div>
             </div>
           </div>
+          
+          {/* Bulk exemption button */}
+          <div className="mb-6 flex justify-end">
+            <button
+              onClick={() => {
+                if (confirm('هل أنت متأكد من إعفاء جميع الخانات غير المقيمة؟ لا يمكن التراجع عن هذا الإجراء.')) {
+                  // Mark all ungraded cells as exempt
+                  const newExemptions = { ...exemptions };
+                  
+                  data.students.forEach(student => {
+                    const studentId = student.id;
+                    const studentGrades = grades[studentId] || {};
+                    
+                    if (!newExemptions[studentId]) {
+                      newExemptions[studentId] = {};
+                    }
+                    
+                    // For each section that isn't graded yet, mark as exempt
+                    examConfig.sections.forEach(section => {
+                      const sectionId = section.id;
+                      if (typeof studentGrades[sectionId] !== 'number' && !newExemptions[studentId][sectionId]) {
+                        newExemptions[studentId][sectionId] = true;
+                      }
+                    });
+                    
+                    // If no exemptions were added for this student, clean up
+                    if (Object.keys(newExemptions[studentId]).length === 0) {
+                      delete newExemptions[studentId];
+                    }
+                  });
+                  
+                  setExemptions(newExemptions);
+                }
+              }}
+              className="inline-flex items-center justify-center rounded-md text-sm font-medium h-10 px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white transition-colors"
+            >
+              <span>إعفاء جميع الخانات غير المقيمة</span>
+            </button>
+          </div>
 
           {/* Student results grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
@@ -354,19 +668,31 @@ export default function ExamGrading() {
                         <span className="shrink-0">{finalGrade !== null ? getFinalGradeEmoji(finalGrade) : '⏳'}</span>
                         <span className="font-medium truncate">{student.name}</span>
                       </div>
-                      {finalGrade !== null ? (
-                        <span className={`px-2 py-1 rounded-md text-sm font-bold shrink-0 ${finalGrade <= 2.5 ? 'bg-green-500/20 text-green-300' :
-                          finalGrade <= 4.0 ? 'bg-yellow-500/20 text-yellow-300' :
+                      <div className="flex items-center gap-1">
+                        {finalGrade !== null && (
+                          <button 
+                            onClick={() => setActiveExplanationStudent(student)}
+                            className="p-1 hover:bg-blue-900/30 rounded-full text-blue-400"
+                            title="تفاصيل الدرجة"
+                          >
+                            <Info className="w-4 h-4" />
+                          </button>
+                        )}
+                        {finalGrade !== null ? (
+                          <span className={`px-2 py-1 rounded-md text-sm font-bold shrink-0 ${
+                            finalGrade <= 2.5 ? 'bg-green-500/20 text-green-300' :
+                            finalGrade <= 4.0 ? 'bg-yellow-500/20 text-yellow-300' :
                             'bg-red-500/20 text-red-300'
                           }`}>
-                          {finalGrade.toFixed(1)}
-                          {exemptCount > 0 && <sup className="text-purple-300 text-xs ml-0.5">*</sup>}
-                        </span>
-                      ) : (
-                        <span className="px-2 py-1 rounded-md text-sm font-bold shrink-0 bg-gray-600/30 text-gray-400" title="لم يتم تقييم جميع الأقسام بعد">
-                          ــ
-                        </span>
-                      )}
+                            {finalGrade.toFixed(1)}
+                            {exemptCount > 0 && <sup className="text-purple-300 text-xs ml-0.5">*</sup>}
+                          </span>
+                        ) : (
+                          <span className="px-2 py-1 rounded-md text-sm font-bold shrink-0 bg-gray-600/30 text-gray-400" title="لم يتم تقييم جميع الأقسام بعد">
+                            ــ
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     {exemptCount > 0 && (
