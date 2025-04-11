@@ -4,7 +4,6 @@
  * Value: Object containing exam configuration
  */
 export const examConfigs = {
-  // Example class configurations
   "الفوج التمهيدي - القاعدة النورانية": {
     examName: "اختبار الفصل الدراسي الثاني",
     sections: [
@@ -18,9 +17,8 @@ export const examConfigs = {
   "الفوج الأول": {
     examName: "اختبار الفصل الدراسي الثاني",
     sections: [
-      { id: "memorization", name: "حفظ", weight: 7 },
-      { id: "tajweed", name: "تجويد", weight: 2 },
-      { id: "performance", name: "أداء", weight: 1 }
+      { id: "memorization", name: "حفظ", weight: 3 },
+      { id: "tajweed", name: "تجويد", weight: 1 }
     ]
   },
 
