@@ -11,7 +11,6 @@ export default function ExamGrading() {
   const [examConfig, setExamConfig] = useState(null);
   const [grades, setGrades] = useState({});
   const [comments, setComments] = useState({});
-  const [copySuccess, setCopySuccess] = useState(null);
 
   // Load data from URL parameters
   useEffect(() => {
@@ -134,77 +133,6 @@ export default function ExamGrading() {
     );
   };
 
-  // Generate message for a student
-  const generateMessage = (studentId) => {
-    if (!examConfig) return "";
-
-    const student = data.students.find(s => s.id === studentId);
-    if (!student) return "";
-
-    const finalGrade = calculateGrade(studentId);
-
-    // Helper function to get grade label
-    const getGradeLabel = (value) => {
-      if (value <= 1.0) return "1";
-      if (value <= 1.3) return "1-";
-      if (value <= 1.7) return "2+";
-      if (value <= 2.0) return "2";
-      if (value <= 2.3) return "2-";
-      if (value <= 2.7) return "3+";
-      if (value <= 3.0) return "3";
-      if (value <= 3.3) return "3-";
-      if (value <= 3.7) return "4+";
-      if (value <= 4.0) return "4";
-      if (value <= 4.3) return "4-";
-      if (value <= 4.7) return "5+";
-      if (value <= 5.0) return "5";
-      if (value <= 5.3) return "5-";
-      return "6";
-    };
-
-    let msg = `السلام عليكم ورحمة الله وبركاته\nتحية طيبة وبعد،\n\n`;
-
-    // Introduction explaining what this is
-    msg += `نود إفادتكم بنتيجة اختبار "${examConfig.examName || 'التقييم'}".\n`;
-    msg += `يرجى العلم أن التقييم يتبع نظام الدرجات الألماني (١-٦) حيث تعتبر درجة ١ هي الأفضل.\n\n`;
-
-    // Student info section
-    msg += `*معلومات الطالب*\n`;
-    msg += `الاسم: ${student.name}\n`;
-    msg += `الصف: ${data.className}\n`;
-    msg += `\n`;
-
-    // Grades details section
-    msg += `*تفاصيل الدرجات* 📝\n`;
-    examConfig.sections.forEach(section => {
-      const gradeValue = grades[studentId]?.[section.id] || 1;
-      const gradeLabel = getGradeLabel(gradeValue);
-      msg += `• ${section.name}\n`;
-      msg += `   الدرجة: ${gradeLabel}\n`;
-    });
-    msg += `\n`;
-
-    // Final grade section with emoji based on performance
-    const finalGradeLabel = getGradeLabel(finalGrade);
-    msg += `*النتيجة النهائية* ${getFinalGradeEmoji(finalGrade)}\n`;
-    msg += `الدرجة: ${finalGradeLabel}\n`;
-    msg += `\n`;
-
-    // Performance description
-    msg += `*مستوى الأداء*\n`;
-    msg += `${getGradeDescription(finalGrade)}\n`;
-
-    // Add any comments if present
-    if (comments[studentId]) {
-      msg += `\n*ملاحظات إضافية*\n`;
-      msg += `${comments[studentId]}\n`;
-    }
-
-    msg += `\n اللهم بارك في أبنائكم وأبنائنا وأجعلهم اللهم قرة عين لنا في الدنيا والآخرة`;
-
-    return msg;
-  };
-
   // Helper function to get appropriate emoji based on grade
   const getFinalGradeEmoji = (grade) => {
     const numGrade = parseFloat(grade);
@@ -271,10 +199,40 @@ export default function ExamGrading() {
               <div className="px-3 py-1.5 bg-gray-700/50 rounded-lg">
                 <span className="text-gray-400 ml-1">عدد الطلاب:</span>
                 <span className="font-medium">{data.students.length}</span>
+                <span className="text-xs text-gray-500 mr-1">
+                  ({(() => {
+                    const completedCount = data.students.filter(student => {
+                      const studentGrades = grades[student.id] || {};
+                      return examConfig.sections.every(section =>
+                        typeof studentGrades[section.id] === 'number'
+                      );
+                    }).length;
+                    return `${completedCount} مكتمل`;
+                  })()})
+                </span>
               </div>
               <div className="px-3 py-1.5 bg-gray-700/50 rounded-lg">
                 <span className="text-gray-400 ml-1">متوسط الصف:</span>
-                <span className="font-medium">{(data.students.reduce((sum, student) => sum + calculateGrade(student.id), 0) / data.students.length || 0).toFixed(1)}</span>
+                <span className="font-medium">
+                  {(() => {
+                    // Only include students with complete grading in the average
+                    const gradedStudents = data.students.filter(student => {
+                      const studentGrades = grades[student.id] || {};
+                      return examConfig.sections.every(section =>
+                        typeof studentGrades[section.id] === 'number'
+                      );
+                    });
+
+                    if (gradedStudents.length === 0) return "ــ";
+
+                    const average = gradedStudents.reduce(
+                      (sum, student) => sum + calculateGrade(student.id),
+                      0
+                    ) / gradedStudents.length;
+
+                    return average.toFixed(1);
+                  })()}
+                </span>
               </div>
             </div>
           </div>
@@ -282,22 +240,33 @@ export default function ExamGrading() {
           {/* Student results grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
             {data.students.map(student => {
-              const finalGrade = calculateGrade(student.id);
+              // Check if student has all sections graded
+              const studentGrades = grades[student.id] || {};
+              const allSectionsGraded = examConfig.sections.every(section =>
+                typeof studentGrades[section.id] === 'number'
+              );
+              const finalGrade = allSectionsGraded ? calculateGrade(student.id) : null;
               // Remove reference to studentMessage since we're not using copy buttons
               return (
                 <div key={student.id} className="bg-gray-700/30 rounded-lg border border-gray-700/50 hover:border-gray-600/50 transition-colors overflow-hidden">
                   <div className="p-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 max-w-full">
-                        <span className="shrink-0">{getFinalGradeEmoji(finalGrade)}</span>
+                        <span className="shrink-0">{finalGrade !== null ? getFinalGradeEmoji(finalGrade) : '⏳'}</span>
                         <span className="font-medium truncate">{student.name}</span>
                       </div>
-                      <span className={`px-2 py-1 rounded-md text-sm font-bold shrink-0 ${finalGrade <= 2.5 ? 'bg-green-500/20 text-green-300' :
-                          finalGrade <= 4.0 ? 'bg-yellow-500/20 text-yellow-300' :
-                            'bg-red-500/20 text-red-300'
-                        }`}>
-                        {finalGrade.toFixed(1)}
-                      </span>
+                      {finalGrade !== null ? (
+                        <span className={`px-2 py-1 rounded-md text-sm font-bold shrink-0 ${finalGrade <= 2.5 ? 'bg-green-500/20 text-green-300' :
+                            finalGrade <= 4.0 ? 'bg-yellow-500/20 text-yellow-300' :
+                              'bg-red-500/20 text-red-300'
+                          }`}>
+                          {finalGrade.toFixed(1)}
+                        </span>
+                      ) : (
+                        <span className="px-2 py-1 rounded-md text-sm font-bold shrink-0 bg-gray-600/30 text-gray-400" title="لم يتم تقييم جميع الأقسام بعد">
+                          ــ
+                        </span>
+                      )}
                     </div>
 
                     {comments[student.id] && (
