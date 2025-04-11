@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { X, Trash2 } from 'lucide-react';
+import { X, Trash2, Ban } from 'lucide-react';
 import useClickOutside from '@/hooks/useClickOutside';
 
 const germanGrades = [
@@ -36,9 +36,12 @@ const QuickSelectionGrid = ({
   max,
   onSelect,
   onClose,
+  onExempt,
   currentGrade,
+  isExempt,
   studentName,
-  homeworkType
+  homeworkType,
+  showExemptOption
 }) => {
   const modalRef = useRef(null);
   useClickOutside(modalRef, onClose);
@@ -61,10 +64,28 @@ const QuickSelectionGrid = ({
 
           {/* Buttons row */}
           <div className="flex items-center gap-2">
+            {/* Exempt button */}
+            {showExemptOption && (
+              <button
+                onClick={() => {
+                  onExempt();
+                  onClose();
+                }}
+                className={`p-2 rounded-md ${isExempt ? 'text-purple-400 bg-purple-800/30' : 'text-gray-400 hover:bg-purple-800/20 hover:text-purple-300'}`}
+                title={isExempt ? "إلغاء الإعفاء" : "إعفاء من هذا القسم"}
+              >
+                <Ban className="w-5 h-5" />
+              </button>
+            )}
+
             {/* Clear button */}
             <button
               onClick={() => {
                 onSelect(null);
+                // Also clear exempt status if currently exempt
+                if (isExempt && showExemptOption) {
+                  onExempt(false);
+                }
                 onClose();
               }}
               className="p-2 rounded-md text-red-400 hover:bg-red-800/30"
@@ -117,6 +138,9 @@ const GradeDisplay = ({
   gradingSystem,
   editable = false,
   onChange,
+  onExempt,
+  isExempt = false,
+  showExemptOption = false,
   min = 1.0,
   max = 5.0,
   placeholder = 'Tap to add grade',
@@ -138,17 +162,33 @@ const GradeDisplay = ({
     }, 500); // Animation duration
   }, [onChange]);
 
+  const handleExempt = useCallback(() => {
+    onExempt?.(!isExempt);
+    // Add recently changed effect
+    setIsRecentlyChanged(true);
+    setTimeout(() => {
+      setIsRecentlyChanged(false);
+    }, 500); // Animation duration
+  }, [onExempt, isExempt]);
+
   const formatGrade = (value) => {
     if (!value) return '';
     return Number(value).toFixed(1);
   };
 
-  const gradeColor = grade
-    ? getGradeColor(grade, gradingSystem, min, max)
-    : 'bg-gray-800/50';
+  let displayContent;
+  let colorClass;
+
+  if (isExempt) {
+    displayContent = 'معفى';
+    colorClass = 'bg-purple-800/40 text-purple-200';
+  } else {
+    displayContent = formatGrade(grade) || placeholder;
+    colorClass = grade ? getGradeColor(grade, gradingSystem, min, max) : 'bg-gray-800/50';
+  }
 
   const baseStyle = "min-w-[64px] min-h-[64px] px-4 py-3 rounded transition-all duration-200";
-  const displayStyle = `${baseStyle} ${gradeColor} 
+  const displayStyle = `${baseStyle} ${colorClass} 
       ${editable ? 'cursor-pointer hover:opacity-80 active:scale-95' : ''}
       ${isRecentlyChanged ? 'ring-2 ring-blue-500 animate-pulse' : ''}
       flex items-center justify-center`;
@@ -161,7 +201,7 @@ const GradeDisplay = ({
         onClick={() => editable && setShowQuickSelect(true)}
       >
         <div className={displayStyle}>
-          <span className="text-lg">{formatGrade(grade) || placeholder}</span>
+          <span className="text-lg">{displayContent}</span>
         </div>
       </div>
 
@@ -171,10 +211,13 @@ const GradeDisplay = ({
           min={min}
           max={max}
           currentGrade={grade}
+          isExempt={isExempt}
           onSelect={handleGradeChange}
+          onExempt={handleExempt}
           onClose={() => setShowQuickSelect(false)}
           studentName={studentName}
           homeworkType={homeworkType}
+          showExemptOption={showExemptOption && !!onExempt}
         />
       )}
     </>

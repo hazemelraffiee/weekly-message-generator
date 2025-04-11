@@ -11,6 +11,7 @@ export default function ExamGrading() {
   const [examConfig, setExamConfig] = useState(null);
   const [grades, setGrades] = useState({});
   const [comments, setComments] = useState({});
+  const [exemptions, setExemptions] = useState({}); // Track exemptions
 
   // Load data from URL parameters
   useEffect(() => {
@@ -57,10 +58,17 @@ export default function ExamGrading() {
     if (!grades[studentId] || !examConfig?.sections) return 1;
 
     const studentGrades = grades[studentId];
+    const studentExemptions = exemptions[studentId] || {};
+    
     let weightedSum = 0;
     let totalWeightUsed = 0;
 
     examConfig.sections.forEach(section => {
+      // Skip this section if student is exempt
+      if (studentExemptions[section.id]) {
+        return;
+      }
+      
       const grade = studentGrades[section.id];
       if (typeof grade === 'number') {
         weightedSum += (grade * section.weight);
@@ -76,8 +84,67 @@ export default function ExamGrading() {
     setGrades(prev => {
       const newGrades = { ...prev };
       if (!newGrades[studentId]) newGrades[studentId] = {};
-      newGrades[studentId][sectionId] = value;
+      
+      if (value === null) {
+        // If removing grade
+        delete newGrades[studentId][sectionId];
+        if (Object.keys(newGrades[studentId]).length === 0) {
+          delete newGrades[studentId];
+        }
+      } else {
+        newGrades[studentId][sectionId] = value;
+      }
+      
       return newGrades;
+    });
+
+    // If setting a grade, ensure the student isn't exempt for this section
+    if (value !== null) {
+      setExemptions(prev => {
+        const newExemptions = { ...prev };
+        if (newExemptions[studentId] && newExemptions[studentId][sectionId]) {
+          delete newExemptions[studentId][sectionId];
+          if (Object.keys(newExemptions[studentId]).length === 0) {
+            delete newExemptions[studentId];
+          }
+        }
+        return newExemptions;
+      });
+    }
+  };
+
+  // Handle exemption changes
+  const handleExemptChange = (studentId, sectionId, isExempt) => {
+    setExemptions(prev => {
+      const newExemptions = { ...prev };
+      
+      if (isExempt) {
+        // Setting exemption
+        if (!newExemptions[studentId]) newExemptions[studentId] = {};
+        newExemptions[studentId][sectionId] = true;
+        
+        // Remove any existing grade for this section
+        setGrades(prevGrades => {
+          const newGrades = { ...prevGrades };
+          if (newGrades[studentId] && newGrades[studentId][sectionId]) {
+            delete newGrades[studentId][sectionId];
+            if (Object.keys(newGrades[studentId]).length === 0) {
+              delete newGrades[studentId];
+            }
+          }
+          return newGrades;
+        });
+      } else {
+        // Removing exemption
+        if (newExemptions[studentId] && newExemptions[studentId][sectionId]) {
+          delete newExemptions[studentId][sectionId];
+          if (Object.keys(newExemptions[studentId]).length === 0) {
+            delete newExemptions[studentId];
+          }
+        }
+      }
+      
+      return newExemptions;
     });
   };
 
@@ -113,6 +180,9 @@ export default function ExamGrading() {
 
   // Custom renderer for grade cells in the table - using GradeDisplay to match homework grading UI
   const renderGradeCell = (student, sectionId, currentValue, section) => {
+    const studentId = student.id;
+    const isExempt = exemptions[studentId]?.[sectionId] === true;
+    
     return (
       <div className="w-full text-center">
         <GradeDisplay
@@ -121,7 +191,10 @@ export default function ExamGrading() {
           editable={true}
           min={1.0}
           max={6.0}
+          isExempt={isExempt}
+          showExemptOption={true} // Only in exam grading
           onChange={(value) => handleGradeChange(student.id, sectionId, value)}
+          onExempt={(exempt) => handleExemptChange(student.id, sectionId, exempt)}
           placeholder={(() => {
             const names = student.name.trim().split(' ');
             return names[0] === 'عبد' && names[1] ? `${names[0]} ${names[1]}` : names[0];
@@ -152,6 +225,16 @@ export default function ExamGrading() {
     if (numGrade <= 4.0) return 'مقبول - يحتاج إلى تحسين';
     if (numGrade <= 5.0) return 'ضعيف - يحتاج إلى دعم إضافي';
     return 'غير مُرضي - يتطلب مراجعة شاملة';
+  };
+
+  // Check if a student has all required sections graded or exempt
+  const isStudentFullyGraded = (studentId) => {
+    const studentGrades = grades[studentId] || {};
+    const studentExemptions = exemptions[studentId] || {};
+    
+    return examConfig.sections.every(section => 
+      typeof studentGrades[section.id] === 'number' || studentExemptions[section.id] === true
+    );
   };
 
   // If no exam configuration is available, show loading or error
@@ -200,12 +283,9 @@ export default function ExamGrading() {
                 <span className="font-medium">{data.students.length}</span>
                 <span className="text-xs text-gray-500 mr-1">
                   ({(() => {
-                    const completedCount = data.students.filter(student => {
-                      const studentGrades = grades[student.id] || {};
-                      return examConfig.sections.every(section =>
-                        typeof studentGrades[section.id] === 'number'
-                      );
-                    }).length;
+                    const completedCount = data.students.filter(student => 
+                      isStudentFullyGraded(student.id)
+                    ).length;
                     return `${completedCount} مكتمل`;
                   })()})
                 </span>
@@ -215,12 +295,9 @@ export default function ExamGrading() {
                 <span className="font-medium">
                   {(() => {
                     // Only include students with complete grading in the average
-                    const gradedStudents = data.students.filter(student => {
-                      const studentGrades = grades[student.id] || {};
-                      return examConfig.sections.every(section =>
-                        typeof studentGrades[section.id] === 'number'
-                      );
-                    });
+                    const gradedStudents = data.students.filter(student => 
+                      isStudentFullyGraded(student.id)
+                    );
 
                     if (gradedStudents.length === 0) return "ــ";
 
@@ -239,13 +316,12 @@ export default function ExamGrading() {
           {/* Student results grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
             {data.students.map(student => {
-              // Check if student has all sections graded
-              const studentGrades = grades[student.id] || {};
-              const allSectionsGraded = examConfig.sections.every(section =>
-                typeof studentGrades[section.id] === 'number'
-              );
-              const finalGrade = allSectionsGraded ? calculateGrade(student.id) : null;
-              // Remove reference to studentMessage since we're not using copy buttons
+              const fullyGraded = isStudentFullyGraded(student.id);
+              const finalGrade = fullyGraded ? calculateGrade(student.id) : null;
+              
+              // Count exempt sections for this student
+              const exemptCount = Object.keys(exemptions[student.id] || {}).length;
+              
               return (
                 <div key={student.id} className="bg-gray-700/30 rounded-lg border border-gray-700/50 hover:border-gray-600/50 transition-colors overflow-hidden">
                   <div className="p-3">
@@ -260,6 +336,7 @@ export default function ExamGrading() {
                               'bg-red-500/20 text-red-300'
                           }`}>
                           {finalGrade.toFixed(1)}
+                          {exemptCount > 0 && <sup className="text-purple-300 text-xs ml-0.5">*</sup>}
                         </span>
                       ) : (
                         <span className="px-2 py-1 rounded-md text-sm font-bold shrink-0 bg-gray-600/30 text-gray-400" title="لم يتم تقييم جميع الأقسام بعد">
@@ -267,6 +344,12 @@ export default function ExamGrading() {
                         </span>
                       )}
                     </div>
+
+                    {exemptCount > 0 && (
+                      <div className="mt-1 text-xs text-purple-300">
+                        <span>معفى من {exemptCount} {exemptCount === 1 ? 'قسم' : 'أقسام'}</span>
+                      </div>
+                    )}
 
                     {comments[student.id] && (
                       <div className="text-xs text-gray-400 mt-2 line-clamp-2" title={comments[student.id]}>
@@ -313,6 +396,7 @@ export default function ExamGrading() {
                   sections: examConfig.sections,
                   grades: grades,
                   comments: comments,
+                  exemptions: exemptions, // Add exemptions to exported data
                   finalGrades: data.students.reduce((acc, student) => {
                     acc[student.id] = calculateGrade(student.id);
                     return acc;
