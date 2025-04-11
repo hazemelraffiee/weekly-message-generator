@@ -9,60 +9,112 @@ const ExportDataButton = ({
   attendance, 
   homework, 
   homeworkGrades,
+  examData,
   onError
 }) => {
   const [exportStatus, setExportStatus] = React.useState('initial'); // 'initial', 'processing', 'success'
 
   const prepareExportData = () => {
-    const attendanceByName = {};
-    const gradesOrganizedByType = {};
-    
-    // Process attendance data for ALL students
-    coreData.students.forEach(student => {
-      // Get attendance data if it exists, otherwise mark as absent
-      const attendanceData = attendance[student.id] || { present: false };
-      attendanceByName[student.name] = attendanceData;
-    });
+    // Check if we're dealing with exam data or regular weekly report
+    const isExamData = !!examData;
 
-    // Process homework grades
-    Object.entries(coreData.homeworkTypes).forEach(([typeId, typeInfo]) => {
-      gradesOrganizedByType[typeInfo.label] = {};
+    if (isExamData) {
+      // ===== Prepare exam data export =====
+      const gradesOrganizedByStudent = {};
       
-      Object.entries(homeworkGrades.grades).forEach(([studentId, grades]) => {
-        const student = coreData.students.find(s => s.id === studentId);
-        if (student && grades[typeId]) {
-          gradesOrganizedByType[typeInfo.label][student.name] = grades[typeId];
-        }
+      // Process exam grades for each student
+      coreData.students.forEach(student => {
+        gradesOrganizedByStudent[student.name] = {
+          finalGrade: examData.finalGrades[student.id],
+          sectionGrades: {},
+          comments: homeworkGrades.comments[student.id] || ''
+        };
+        
+        // Add section grades for this student
+        examData.sections.forEach(section => {
+          const sectionGrade = examData.grades[student.id]?.[section.id];
+          if (sectionGrade) {
+            gradesOrganizedByStudent[student.name].sectionGrades[section.name] = {
+              grade: sectionGrade,
+              weight: section.weight
+            };
+          }
+        });
       });
-    });
 
-    // Process homework assignments
-    const processedHomework = {
-      assignments: (homework.assignments || []).map(assignment => ({
-        type: homeworkGrades.types[assignment.type]?.label || assignment.type,
-        content: assignment.content,
-        assignedStudents: assignment.assignedStudents 
-          ? assignment.assignedStudents.map(
-              studentId => coreData.students.find(s => s.id === studentId)?.name
-            ).filter(Boolean)
-          : null
-      }))
-    };
+      // Construct the final data structure for exam export
+      return {
+        metadata: {
+          schoolName: coreData.schoolName,
+          className: coreData.className,
+          date: {
+            raw: reportDate,
+            formatted: formattedDate
+          },
+          examName: examData.examName
+        },
+        examSections: examData.sections.map(section => ({
+          id: section.id,
+          name: section.name,
+          weight: section.weight
+        })),
+        studentResults: gradesOrganizedByStudent,
+        exportType: 'exam'
+      };
+      
+    } else {
+      // ===== Prepare weekly report data export (original functionality) =====
+      const attendanceByName = {};
+      const gradesOrganizedByType = {};
+      
+      // Process attendance data for ALL students
+      coreData.students.forEach(student => {
+        // Get attendance data if it exists, otherwise mark as absent
+        const attendanceData = attendance[student.id] || { present: false };
+        attendanceByName[student.name] = attendanceData;
+      });
 
-    // Construct the final data structure
-    return {
-      metadata: {
-        schoolName: coreData.schoolName,
-        className: coreData.className,
-        date: {
-          raw: reportDate,
-          formatted: formattedDate
-        }
-      },
-      attendance: attendanceByName,
-      homework: processedHomework,
-      previousHomework: gradesOrganizedByType
-    };
+      // Process homework grades
+      Object.entries(coreData.homeworkTypes).forEach(([typeId, typeInfo]) => {
+        gradesOrganizedByType[typeInfo.label] = {};
+        
+        Object.entries(homeworkGrades.grades).forEach(([studentId, grades]) => {
+          const student = coreData.students.find(s => s.id === studentId);
+          if (student && grades[typeId]) {
+            gradesOrganizedByType[typeInfo.label][student.name] = grades[typeId];
+          }
+        });
+      });
+
+      // Process homework assignments
+      const processedHomework = {
+        assignments: (homework.assignments || []).map(assignment => ({
+          type: homeworkGrades.types[assignment.type]?.label || assignment.type,
+          content: assignment.content,
+          assignedStudents: assignment.assignedStudents 
+            ? assignment.assignedStudents.map(
+                studentId => coreData.students.find(s => s.id === studentId)?.name
+              ).filter(Boolean)
+            : null
+        }))
+      };
+
+      // Construct the final data structure for weekly report
+      return {
+        metadata: {
+          schoolName: coreData.schoolName,
+          className: coreData.className,
+          date: {
+            raw: reportDate,
+            formatted: formattedDate
+          }
+        },
+        attendance: attendanceByName,
+        homework: processedHomework,
+        previousHomework: gradesOrganizedByType,
+        exportType: 'weekly'
+      };
+    }
   };
 
   const handleExport = async () => {
@@ -77,12 +129,14 @@ const ExportDataButton = ({
       const compressedData = await compress(jsonString);
       
       // Prepare a readable header with class and date information
+      const isExam = !!examData;
       const header = `فصل: ${coreData.className}\n`;
       const dateInfo = `التاريخ: ${formattedDate}\n`;
+      const typeInfo = isExam ? `اختبار: ${examData.examName}\n` : '';
       const separator = '---\n';
       
       // Combine header and compressed data
-      const fullExport = header + dateInfo + separator + compressedData;
+      const fullExport = header + dateInfo + typeInfo + separator + compressedData;
       
       // Copy to clipboard
       await navigator.clipboard.writeText(fullExport);
@@ -114,10 +168,13 @@ const ExportDataButton = ({
           </div>
         );
       default:
+        const isExam = !!examData;
         return (
           <div className="flex items-center gap-2">
             <Download className="h-5 w-5 transition-transform group-hover:scale-110" />
-            <span className="font-medium">نسخ تقرير الإشراف</span>
+            <span className="font-medium">
+              {isExam ? 'نسخ تقرير الاختبار للمشرف' : 'نسخ تقرير الإشراف'}
+            </span>
           </div>
         );
     }
