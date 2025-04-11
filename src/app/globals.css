@@ -27,6 +27,7 @@ body {
     opacity: 0;
     transform: translate(-50%, -120%);
   }
+
   to {
     opacity: 1;
     transform: translate(-50%, -100%);
@@ -53,4 +54,127 @@ body {
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background-color: rgba(255, 255, 255, 0.1);
   border-radius: 3px;
+}
+
+@keyframes pulse-grow {
+
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.03);
+  }
+}
+
+@keyframes grow-shrink {
+
+  0%,
+  100% {
+    transform: scale(0.95);
+    opacity: 0.2;
+  }
+
+  50% {
+    transform: scale(1.1);
+    opacity: 0.4;
+  }
+}
+
+@keyframes grow-icon {
+
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.2);
+  }
+}
+
+@keyframes grow-line {
+
+  0%,
+  100% {
+    width: 0%;
+    left: 50%;
+    right: 50%;
+    opacity: 0.7;
+  }
+
+  50% {
+    width: 100%;
+    left: 0;
+    right: 0;
+    opacity: 1;
+  }
+}
+
+@keyframes blink {
+
+  0%,
+  92%,
+  100% {
+    opacity: 0;
+  }
+
+  94%,
+  96% {
+    opacity: 0.2;
+  }
+}
+
+@keyframes blink-fast {
+
+  0%,
+  49% {
+    opacity: 1;
+  }
+
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes blink-border {
+
+  0%,
+  100% {
+    opacity: 0;
+  }
+
+  50% {
+    opacity: 0.8;
+  }
+}
+
+.animate-pulse-grow {
+  animation: pulse-grow 2s ease-in-out infinite;
+}
+
+.animate-grow-shrink {
+  animation: grow-shrink 3s ease-in-out infinite;
+}
+
+.animate-grow-icon {
+  animation: grow-icon 1.5s ease-in-out infinite;
+}
+
+.animate-grow-line {
+  animation: grow-line 3s ease-in-out infinite;
+}
+
+.animate-blink {
+  animation: blink 5s infinite;
+}
+
+.animate-blink-fast {
+  animation: blink-fast 1s infinite;
+}
+
+.animate-blink-border {
+  animation: blink-border 2s infinite;
 }

@@ -845,11 +845,33 @@ const WeeklyMessageGenerator = () => {
                         // Navigate to the exam page
                         window.location.href = examUrl;
                       }}
-                      className="w-full sm:w-auto inline-flex items-center justify-center rounded-md text-sm font-medium h-11 px-5 bg-blue-600 hover:bg-blue-700 transition-colors text-white group"
+                      className="relative w-full sm:w-auto inline-flex items-center justify-center rounded-md text-sm font-medium h-12 px-6 
+              bg-gradient-to-r from-red-500 to-orange-600 hover:from-red-600 hover:to-orange-700 
+              transition-colors duration-300 text-white group shadow-lg shadow-red-900/50 
+              border-2 border-red-400/40 animate-pulse-grow"
                     >
-                      <div className="flex items-center gap-2">
-                        <GraduationCap className="h-5 w-5 transition-transform group-hover:scale-110" />
-                        <span className="font-medium">اختبار جديد</span>
+                      {/* Blinking background highlight */}
+                      <span className="absolute inset-0 rounded-md bg-white opacity-0 animate-blink"></span>
+
+                      {/* Growing and shrinking glow */}
+                      <span className="absolute -inset-1 rounded-md bg-gradient-to-r from-cyan-400 to-red-400 opacity-30 blur-md animate-grow-shrink"></span>
+
+                      {/* Enhanced hover glow */}
+                      <span className="absolute -inset-0.5 rounded-md bg-gradient-to-r from-red-400 to-orange-400 opacity-0 group-hover:opacity-40 group-hover:blur transition-all duration-500"></span>
+
+                      {/* Attention border - blinking */}
+                      <span className="absolute -inset-1 rounded-lg border-2 border-cyan-400 opacity-0 animate-blink-border"></span>
+
+                      <div className="relative flex items-center gap-3 z-10">
+                        <div className="relative animate-grow-icon">
+                          <GraduationCap className="h-6 w-6 transition-transform group-hover:scale-125 duration-300" />
+                          {/* Blinking indicator dot */}
+                          <span className="absolute -top-1 -right-1 h-3 w-3 bg-yellow-400 rounded-full animate-blink-fast"></span>
+                        </div>
+                        <span className="font-bold text-base relative">
+                          اختبار الفصل الدراسي الثاني
+                          <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-white animate-grow-line"></span>
+                        </span>
                       </div>
                     </button>
                   </div>

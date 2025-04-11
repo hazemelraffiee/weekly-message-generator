@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { decompress } from '../../utils/dataUtils';
+import { decodeData } from '@/components/LinkCreator/utils'
 import GradingTable from '@/components/Common/GradingTable';
 import GradeDisplay from '@/components/Common/GradeDisplay';
 import ExportDataButton from '@/components/MessageGenerator/ExportDataButton';
 import { getExamConfig } from '@/config/examConfig';
-import { PenLine, GraduationCap, Loader2, Info, X } from 'lucide-react';
+import { PenLine, Loader2, Info, X, School, Award, Users, BarChart2 } from 'lucide-react';
 import { useHydration } from '@/context/HydrationContext';
 import useClickOutside from '@/hooks/useClickOutside';
 
@@ -12,28 +13,28 @@ import useClickOutside from '@/hooks/useClickOutside';
 const GradeExplanationDialog = ({ student, grades, exemptions, examConfig, onClose }) => {
   const dialogRef = useRef(null);
   useClickOutside(dialogRef, onClose);
-  
+
   const studentId = student.id;
   const studentGrades = grades[studentId] || {};
   const studentExemptions = exemptions[studentId] || {};
-  
+
   // Calculate weighted average details for explanation
   let totalWeightUsed = 0;
   let totalWeightedScore = 0;
-  
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div ref={dialogRef} className="bg-gray-800 rounded-lg p-4 w-full max-w-lg">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-medium">حساب درجة {student.name}</h3>
-          <button 
+          <button
             onClick={onClose}
             className="p-2 hover:bg-gray-700 rounded-full"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
-        
+
         <div className="space-y-4">
           <div className="bg-gray-700/30 p-4 rounded-lg">
             <h4 className="font-medium mb-2">طريقة حساب الدرجة النهائية</h4>
@@ -42,7 +43,7 @@ const GradeExplanationDialog = ({ student, grades, exemptions, examConfig, onClo
               {Object.keys(studentExemptions).length > 0 && " الأقسام المعفى منها لا تدخل في حساب المتوسط."}
             </p>
           </div>
-          
+
           <div className="border border-gray-700 rounded-lg overflow-hidden">
             <table className="w-full text-sm">
               <thead>
@@ -59,7 +60,7 @@ const GradeExplanationDialog = ({ student, grades, exemptions, examConfig, onClo
                   const grade = studentGrades[sectionId];
                   const isExempt = studentExemptions[sectionId];
                   const weight = section.weight;
-                  
+
                   // Calculations for weighted average
                   let weightedScore = null;
                   if (!isExempt && typeof grade === 'number') {
@@ -67,7 +68,7 @@ const GradeExplanationDialog = ({ student, grades, exemptions, examConfig, onClo
                     totalWeightedScore += weightedScore;
                     totalWeightUsed += weight;
                   }
-                  
+
                   return (
                     <tr key={sectionId} className="border-t border-gray-700">
                       <td className="p-2 text-right">{section.name}</td>
@@ -75,11 +76,10 @@ const GradeExplanationDialog = ({ student, grades, exemptions, examConfig, onClo
                         {isExempt ? (
                           <span className="text-purple-300">معفى</span>
                         ) : typeof grade === 'number' ? (
-                          <span className={`px-2 py-0.5 rounded ${
-                            grade <= 2.5 ? 'bg-green-500/20 text-green-300' :
+                          <span className={`px-2 py-0.5 rounded ${grade <= 2.5 ? 'bg-green-500/20 text-green-300' :
                             grade <= 4.0 ? 'bg-yellow-500/20 text-yellow-300' :
-                            'bg-red-500/20 text-red-300'
-                          }`}>
+                              'bg-red-500/20 text-red-300'
+                            }`}>
                             {grade.toFixed(1)}
                           </span>
                         ) : (
@@ -101,7 +101,7 @@ const GradeExplanationDialog = ({ student, grades, exemptions, examConfig, onClo
               </tbody>
             </table>
           </div>
-          
+
           <div className="bg-blue-900/30 p-4 rounded-lg">
             <div className="flex items-center justify-between">
               <span className="font-medium">الدرجة النهائية:</span>
@@ -168,7 +168,7 @@ export default function ExamGrading() {
     setGrades({});
     setComments({});
     setExemptions({});
-    
+
     // Then clear localStorage
     Object.keys(localStorage).forEach(key => {
       if (key.startsWith('examGrading_')) {
@@ -186,7 +186,15 @@ export default function ExamGrading() {
     const encoded = params.get('data');
     if (encoded) {
       try {
-        const decoded = decompress(encoded);
+        let decoded;
+        try {
+          decoded = decompress(encoded);
+          if (decoded == null) {
+            decoded = decodeData(encoded);
+          }
+        } catch (e) {
+          console.error('Error decoding data:', e);
+        }
         if (decoded?.className && Array.isArray(decoded.students)) {
           const config = getExamConfig(decoded.className);
 
@@ -494,10 +502,10 @@ export default function ExamGrading() {
       <div className="max-w-4xl mx-auto">
         {/* Confirmation dialog */}
         {showConfirmation && renderConfirmationModal()}
-        
+
         {/* Grade explanation dialog */}
         {activeExplanationStudent && (
-          <GradeExplanationDialog 
+          <GradeExplanationDialog
             student={activeExplanationStudent}
             grades={grades}
             exemptions={exemptions}
@@ -505,56 +513,103 @@ export default function ExamGrading() {
             onClose={() => setActiveExplanationStudent(null)}
           />
         )}
-        
-        {/* Header section with new exam button */}
-        <div className="mb-8 bg-gradient-to-r from-blue-600 to-blue-800 rounded-lg p-6">
-          <div className="flex flex-col md:flex-row items-start justify-between gap-4 mb-4">
-            <div>
-              <h1 className="text-2xl font-bold mb-2">{data.className}</h1>
-              <div className="text-blue-100">{data.schoolName}</div>
-              <div className="mt-4 px-4 py-3 bg-blue-700/50 border border-blue-400/30 rounded text-white">
-                <span className="font-bold">{examConfig.examName}</span>
-              </div>
-            </div>
-            <button
-              onClick={() => setShowConfirmation(true)}
-              className="w-full md:w-auto inline-flex items-center justify-center rounded-md text-sm font-medium h-11 px-5 bg-amber-600 hover:bg-amber-700 transition-colors text-white group"
-            >
-              <div className="flex items-center gap-2">
-                <PenLine className="h-5 w-5 transition-transform group-hover:scale-110" />
-                <span className="font-medium">اختبار جديد</span>
-              </div>
-            </button>
-          </div>
-          
-          {/* Status indicators */}
-          <div className="flex flex-wrap gap-3 mt-4">
-            <div className="px-3 py-1.5 bg-blue-700/30 rounded-lg flex items-center gap-2">
-              <span className="text-gray-200 text-sm">الطلاب:</span>
-              <span className="font-medium text-white">{data.students.length}</span>
-            </div>
-            <div className="px-3 py-1.5 bg-blue-700/30 rounded-lg flex items-center gap-2">
-              <span className="text-gray-200 text-sm">مكتمل:</span>
-              <span className="font-medium text-white">
-                {data.students.filter(student => isStudentFullyGraded(student.id)).length}
-              </span>
-            </div>
-            <div className="px-3 py-1.5 bg-blue-700/30 rounded-lg flex items-center gap-2">
-              <span className="text-gray-200 text-sm">متوسط الصف:</span>
-              <span className="font-medium text-white">
-                {(() => {
-                  // Only include students with complete grading in the average
-                  const gradedStudents = data.students.filter(student => isStudentFullyGraded(student.id));
-                  if (gradedStudents.length === 0) return "ــ";
 
-                  const average = gradedStudents.reduce(
-                    (sum, student) => sum + calculateGrade(student.id),
-                    0
-                  ) / gradedStudents.length;
+        {/* Header Section */}
+        <div className="mb-8">
+          {/* Main card with layered design */}
+          <div className="relative rounded-xl overflow-hidden shadow-xl border border-blue-500/30">
+            {/* Background gradient with subtle pattern */}
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700"></div>
+            <div className="absolute inset-0 opacity-5 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMTAiIGN5PSIxMCIgcj0iMSIgZmlsbD0id2hpdGUiIG9wYWNpdHk9IjAuMyIvPjwvc3ZnPg==')]"></div>
 
-                  return average.toFixed(1);
-                })()}
-              </span>
+            {/* Content container with proper spacing */}
+            <div className="relative p-5 sm:p-6 md:p-8">
+              {/* Top section with school name */}
+              <div className="flex items-center gap-2 text-blue-200 mb-3">
+                <PenLine className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span className="text-xs sm:text-sm font-medium">{data.schoolName}</span>
+              </div>
+
+              {/* Main content grid for better responsive layout */}
+              <div className="grid grid-cols-1 lg:grid-cols-7 gap-4 lg:gap-6 items-start">
+                {/* Class and exam info - takes more space on desktop */}
+                <div className="lg:col-span-5">
+                  <h1 className="text-2xl sm:text-3xl font-bold text-white mb-3">{data.className}</h1>
+
+                  <div className="inline-flex items-center px-4 py-2.5 bg-blue-600/40 backdrop-blur-sm border border-blue-400/20 rounded-lg text-white gap-2 shadow-md">
+                    <Award className="h-4 w-4 sm:h-5 sm:w-5 text-blue-300" />
+                    <span className="font-semibold text-sm sm:text-base">{examConfig.examName}</span>
+                  </div>
+                </div>
+
+                {/* New exam button - aligned right on desktop */}
+                <div className="lg:col-span-2 flex justify-start lg:justify-end mt-4 lg:mt-0">
+                  <button
+                    onClick={() => setShowConfirmation(true)}
+                    className="group flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 rounded-lg shadow-lg transition-all duration-300 text-white w-full sm:w-auto"
+                  >
+                    <PenLine className="h-4 w-4 sm:h-5 sm:w-5 transition-transform group-hover:rotate-12" />
+                    <span className="font-medium text-sm sm:text-base">اختبار جديد</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Stats section with improved responsive grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mt-8">
+                {/* Student count */}
+                <div className="bg-blue-700/50 backdrop-blur-sm rounded-lg border border-blue-500/30 p-4 hover:bg-blue-600/50 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 flex-shrink-0 flex items-center justify-center bg-blue-500/20 rounded-full">
+                      <Users className="h-5 w-5 text-blue-300" />
+                    </div>
+                    <div>
+                      <div className="text-xs text-blue-200">الطلاب</div>
+                      <div className="text-lg sm:text-xl font-bold text-white">{data.students.length}</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Completed count */}
+                <div className="bg-blue-700/50 backdrop-blur-sm rounded-lg border border-blue-500/30 p-4 hover:bg-blue-600/50 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 flex-shrink-0 flex items-center justify-center bg-green-500/20 rounded-full">
+                      <Info className="h-5 w-5 text-green-300" />
+                    </div>
+                    <div>
+                      <div className="text-xs text-blue-200">مكتمل</div>
+                      <div className="text-lg sm:text-xl font-bold text-white">
+                        {data.students.filter(student => isStudentFullyGraded(student.id)).length}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Class average */}
+                <div className="bg-blue-700/50 backdrop-blur-sm rounded-lg border border-blue-500/30 p-4 hover:bg-blue-600/50 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 flex-shrink-0 flex items-center justify-center bg-yellow-500/20 rounded-full">
+                      <BarChart2 className="h-5 w-5 text-yellow-300" />
+                    </div>
+                    <div>
+                      <div className="text-xs text-blue-200">متوسط الصف</div>
+                      <div className="text-lg sm:text-xl font-bold text-white">
+                        {(() => {
+                          // Only include students with complete grading in the average
+                          const gradedStudents = data.students.filter(student => isStudentFullyGraded(student.id));
+                          if (gradedStudents.length === 0) return "ــ";
+
+                          const average = gradedStudents.reduce(
+                            (sum, student) => sum + calculateGrade(student.id),
+                            0
+                          ) / gradedStudents.length;
+
+                          return average.toFixed(1);
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -611,7 +666,7 @@ export default function ExamGrading() {
               </div>
             </div>
           </div>
-          
+
           {/* Bulk exemption button */}
           <div className="mb-6 flex justify-end">
             <button
@@ -619,15 +674,15 @@ export default function ExamGrading() {
                 if (confirm('هل أنت متأكد من إعفاء جميع الخانات غير المقيمة؟ لا يمكن التراجع عن هذا الإجراء.')) {
                   // Mark all ungraded cells as exempt
                   const newExemptions = { ...exemptions };
-                  
+
                   data.students.forEach(student => {
                     const studentId = student.id;
                     const studentGrades = grades[studentId] || {};
-                    
+
                     if (!newExemptions[studentId]) {
                       newExemptions[studentId] = {};
                     }
-                    
+
                     // For each section that isn't graded yet, mark as exempt
                     examConfig.sections.forEach(section => {
                       const sectionId = section.id;
@@ -635,13 +690,13 @@ export default function ExamGrading() {
                         newExemptions[studentId][sectionId] = true;
                       }
                     });
-                    
+
                     // If no exemptions were added for this student, clean up
                     if (Object.keys(newExemptions[studentId]).length === 0) {
                       delete newExemptions[studentId];
                     }
                   });
-                  
+
                   setExemptions(newExemptions);
                 }
               }}
@@ -670,7 +725,7 @@ export default function ExamGrading() {
                       </div>
                       <div className="flex items-center gap-1">
                         {finalGrade !== null && (
-                          <button 
+                          <button
                             onClick={() => setActiveExplanationStudent(student)}
                             className="p-1 hover:bg-blue-900/30 rounded-full text-blue-400"
                             title="تفاصيل الدرجة"
@@ -679,11 +734,10 @@ export default function ExamGrading() {
                           </button>
                         )}
                         {finalGrade !== null ? (
-                          <span className={`px-2 py-1 rounded-md text-sm font-bold shrink-0 ${
-                            finalGrade <= 2.5 ? 'bg-green-500/20 text-green-300' :
+                          <span className={`px-2 py-1 rounded-md text-sm font-bold shrink-0 ${finalGrade <= 2.5 ? 'bg-green-500/20 text-green-300' :
                             finalGrade <= 4.0 ? 'bg-yellow-500/20 text-yellow-300' :
-                            'bg-red-500/20 text-red-300'
-                          }`}>
+                              'bg-red-500/20 text-red-300'
+                            }`}>
                             {finalGrade.toFixed(1)}
                             {exemptCount > 0 && <sup className="text-purple-300 text-xs ml-0.5">*</sup>}
                           </span>
