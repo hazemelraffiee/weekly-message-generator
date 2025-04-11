@@ -10,7 +10,7 @@ export const examConfigs = {
   "default": {
     examName: "اختبار الفصل الدراسي الثاني",
     sections: [
-      { id: "memorization", name: "حفظ", weight: 1 },
+      { id: "memorization", name: "حفظ", weight: 3 },
       { id: "tajweed", name: "تجويد", weight: 1 },
     ]
   }
