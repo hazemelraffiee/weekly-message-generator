@@ -553,4 +553,271 @@ export default function ExamGrading() {
           <div className="relative rounded-xl overflow-hidden shadow-xl border border-blue-500/30">
             {/* Background gradient with subtle pattern */}
             <div className="absolute inset-0 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700"></div>
-            <div className="absolute inset-0 
+            <div className="absolute inset-0 opacity-5 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMTAiIGN5PSIxMCIgcj0iMSIgZmlsbD0id2hpdGUiIG9wYWNpdHk9IjAuMyIvPjwvc3ZnPg==')]"></div>
+
+            {/* Content container with proper spacing */}
+            <div className="relative p-5 sm:p-6 md:p-8">
+              {/* Top section with school name */}
+              <div className="flex items-center gap-2 text-blue-200 mb-3">
+                <PenLine className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span className="text-xs sm:text-sm font-medium">{data.schoolName}</span>
+              </div>
+
+              {/* Main content grid for better responsive layout */}
+              <div className="grid grid-cols-1 lg:grid-cols-7 gap-4 lg:gap-6 items-start">
+                {/* Class and exam info - takes more space on desktop */}
+                <div className="lg:col-span-5">
+                  <h1 className="text-2xl sm:text-3xl font-bold text-white mb-3">{data.className}</h1>
+
+                  <div className="inline-flex items-center px-4 py-2.5 bg-blue-600/40 backdrop-blur-sm border border-blue-400/20 rounded-lg text-white gap-2 shadow-md">
+                    <Award className="h-4 w-4 sm:h-5 sm:w-5 text-blue-300" />
+                    <span className="font-semibold text-sm sm:text-base">{examConfig.examName}</span>
+                  </div>
+                </div>
+
+                {/* New exam button - aligned right on desktop */}
+                <div className="lg:col-span-2 flex justify-start lg:justify-end mt-4 lg:mt-0">
+                  <button
+                    onClick={() => setShowConfirmation(true)}
+                    className="group flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 rounded-lg shadow-lg transition-all duration-300 text-white w-full sm:w-auto"
+                  >
+                    <PenLine className="h-4 w-4 sm:h-5 sm:w-5 transition-transform group-hover:rotate-12" />
+                    <span className="font-medium text-sm sm:text-base">اختبار جديد</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Stats section with improved responsive grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mt-8">
+                {/* Student count */}
+                <div className="bg-blue-700/50 backdrop-blur-sm rounded-lg border border-blue-500/30 p-4 hover:bg-blue-600/50 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 flex-shrink-0 flex items-center justify-center bg-blue-500/20 rounded-full">
+                      <Users className="h-5 w-5 text-blue-300" />
+                    </div>
+                    <div>
+                      <div className="text-xs text-blue-200">الطلاب</div>
+                      <div className="text-lg sm:text-xl font-bold text-white">{activeStudents.length}</div>
+                      {Object.keys(skippedStudents).length > 0 && (
+                        <div className="text-xs text-blue-300">({data.students.length} الكلي)</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Completed count */}
+                <div className="bg-blue-700/50 backdrop-blur-sm rounded-lg border border-blue-500/30 p-4 hover:bg-blue-600/50 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 flex-shrink-0 flex items-center justify-center bg-green-500/20 rounded-full">
+                      <Info className="h-5 w-5 text-green-300" />
+                    </div>
+                    <div>
+                      <div className="text-xs text-blue-200">مكتمل</div>
+                      <div className="text-lg sm:text-xl font-bold text-white">
+                        {fullyGradedStudents.length}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Class average */}
+                <div className="bg-blue-700/50 backdrop-blur-sm rounded-lg border border-blue-500/30 p-4 hover:bg-blue-600/50 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 flex-shrink-0 flex items-center justify-center bg-yellow-500/20 rounded-full">
+                      <BarChart2 className="h-5 w-5 text-yellow-300" />
+                    </div>
+                    <div>
+                      <div className="text-xs text-blue-200">متوسط الصف</div>
+                      <div className="text-lg sm:text-xl font-bold text-white">
+                        {classAverage !== null ? classAverage.toFixed(1) : "ــ"}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Grading Table */}
+        {data.students.length > 0 && (
+          <GradingTable
+            students={data.students}
+            types={getSectionsAsTypes()}
+            grades={grades}
+            comments={comments}
+            skippedStudents={skippedStudents}
+            onToggleSkip={toggleStudentSkipped}
+            onCommentChange={handleCommentChange}
+            renderGradeCell={renderGradeCell}
+            className="mb-8"
+          />
+        )}
+
+        {/* Results Section */}
+        <div className="mt-8 border border-gray-700 rounded-lg bg-gray-800 p-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4">
+            <h2 className="text-xl font-bold mb-2 sm:mb-0">نتائج الاختبار</h2>
+            <div className="flex items-center gap-3 text-sm">
+              <div className="px-3 py-1.5 bg-gray-700/50 rounded-lg">
+                <span className="text-gray-400 ml-1">عدد الطلاب:</span>
+                <span className="font-medium">{activeStudents.length}</span>
+                <span className="text-xs text-gray-500 mr-1">
+                  ({fullyGradedStudents.length} مكتمل)
+                </span>
+              </div>
+              <div className="px-3 py-1.5 bg-gray-700/50 rounded-lg">
+                <span className="text-gray-400 ml-1">متوسط الصف:</span>
+                <span className="font-medium">
+                  {classAverage !== null ? classAverage.toFixed(1) : "ــ"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Bulk exemption button */}
+          <div className="mb-6 flex justify-end">
+            <button
+              onClick={() => {
+                if (confirm('هل أنت متأكد من إعفاء جميع الخانات غير المقيمة؟ لا يمكن التراجع عن هذا الإجراء.')) {
+                  // Mark all ungraded cells as exempt
+                  const newExemptions = { ...exemptions };
+
+                  // Only apply to active (non-skipped) students
+                  activeStudents.forEach(student => {
+                    const studentId = student.id;
+                    const studentGrades = grades[studentId] || {};
+
+                    if (!newExemptions[studentId]) {
+                      newExemptions[studentId] = {};
+                    }
+
+                    // For each section that isn't graded yet, mark as exempt
+                    examConfig.sections.forEach(section => {
+                      const sectionId = section.id;
+                      if (typeof studentGrades[sectionId] !== 'number' && !newExemptions[studentId][sectionId]) {
+                        newExemptions[studentId][sectionId] = true;
+                      }
+                    });
+
+                    // If no exemptions were added for this student, clean up
+                    if (Object.keys(newExemptions[studentId]).length === 0) {
+                      delete newExemptions[studentId];
+                    }
+                  });
+
+                  setExemptions(newExemptions);
+                }
+              }}
+              className="inline-flex items-center justify-center rounded-md text-sm font-medium h-10 px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white transition-colors"
+            >
+              <span>إعفاء جميع الخانات غير المقيمة</span>
+            </button>
+          </div>
+
+          {/* Student results grid - only showing active students */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
+            {activeStudents.map(student => {
+              const fullyGraded = isStudentFullyGraded(student.id);
+              const finalGrade = fullyGraded ? calculateGrade(student.id) : null;
+
+              // Count exempt sections for this student
+              const exemptCount = Object.keys(exemptions[student.id] || {}).length;
+
+              return (
+                <div key={student.id} className="bg-gray-700/30 rounded-lg border border-gray-700/50 hover:border-gray-600/50 transition-colors overflow-hidden">
+                  <div className="p-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 max-w-full">
+                        <span className="shrink-0">{finalGrade !== null ? getFinalGradeEmoji(finalGrade) : '⏳'}</span>
+                        <span className="font-medium truncate">{student.name}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {finalGrade !== null && (
+                          <button
+                            onClick={() => setActiveExplanationStudent(student)}
+                            className="p-1 hover:bg-blue-900/30 rounded-full text-blue-400"
+                            title="تفاصيل الدرجة"
+                          >
+                            <Info className="w-4 h-4" />
+                          </button>
+                        )}
+                        {finalGrade !== null ? (
+                          <span className={`px-2 py-1 rounded-md text-sm font-bold shrink-0 ${finalGrade <= 2.5 ? 'bg-green-500/20 text-green-300' :
+                            finalGrade <= 4.0 ? 'bg-yellow-500/20 text-yellow-300' :
+                              'bg-red-500/20 text-red-300'
+                            }`}>
+                            {finalGrade.toFixed(1)}
+                            {exemptCount > 0 && <sup className="text-purple-300 text-xs ml-0.5">*</sup>}
+                          </span>
+                        ) : (
+                          <span className="px-2 py-1 rounded-md text-sm font-bold shrink-0 bg-gray-600/30 text-gray-400" title="لم يتم تقييم جميع الأقسام بعد">
+                            ــ
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {exemptCount > 0 && (
+                      <div className="mt-1 text-xs text-purple-300">
+                        <span>معفى من {exemptCount} {exemptCount === 1 ? 'قسم' : 'أقسام'}</span>
+                      </div>
+                    )}
+
+                    {comments[student.id] && (
+                      <div className="text-xs text-gray-400 mt-2 line-clamp-2" title={comments[student.id]}>
+                        <span className="text-gray-500">ملاحظات:</span> {comments[student.id]}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Supervisor export section */}
+          <div className="bg-blue-600/10 rounded-lg p-4 border border-blue-600/20">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="text-center sm:text-right">
+                <h3 className="text-lg font-medium text-blue-300">إرسال التقرير للمشرف</h3>
+                <p className="text-gray-400 text-sm">تصدير نتائج الاختبار كاملة لإرسالها للمشرف</p>
+              </div>
+              <ExportDataButton
+                coreData={{
+                  schoolName: data.schoolName,
+                  className: data.className,
+                  students: activeStudents, // Only include active students in the export
+                  examName: examConfig.examName,
+                  examSections: examConfig.sections
+                }}
+                reportDate={new Date().toISOString().split('T')[0]}
+                formattedDate={formatDate(new Date())}
+                attendance={{}} // No attendance for exams
+                homework={{}} // No homework for exams
+                homeworkGrades={{
+                  types: getSectionsAsTypes(),
+                  grades: grades,
+                  comments: comments
+                }}
+                examData={{
+                  examName: examConfig.examName,
+                  sections: examConfig.sections,
+                  grades: grades,
+                  comments: comments,
+                  exemptions: exemptions,
+                  finalGrades: activeStudents.reduce((acc, student) => {
+                    acc[student.id] = calculateGrade(student.id);
+                    return acc;
+                  }, {})
+                }}
+                onError={(error) => {
+                  console.error('Export failed:', error);
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
