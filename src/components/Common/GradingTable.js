@@ -120,7 +120,6 @@ const GradingTable = ({
       if (!skippedStudents[a.id] && skippedStudents[b.id]) return -1;
       
       // Then sort by attendance
-      if (!attendance[a.id] || !attendance[b.id]) return 0;
       const aPresent = attendance[a.id]?.present;
       const bPresent = attendance[b.id]?.present;
       if (aPresent === bPresent) return 0;
@@ -165,7 +164,10 @@ const GradingTable = ({
               {sortedStudents.map((student) => {
                 const hasComment = Boolean(comments[student.id]);
                 const isRowOpen = hasComment || openCommentStudentId === student.id;
-                const isPresent = attendance[student.id]?.present;
+                // In homework mode: if attendance data exists for the student, use it; otherwise mark as absent (isPresent = false)
+                // This ensures students are absent by default in homework mode
+                const attendanceData = attendance[student.id];
+                const isPresent = attendanceData ? attendanceData.present : false;
                 const isSkipped = skippedStudents[student.id];
 
                 return (
@@ -176,7 +178,8 @@ const GradingTable = ({
                     >
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          {attendance[student.id] && (
+                          {/* Always display attendance icon in homework mode */}
+                          {Object.keys(attendance).length > 0 && (
                             isPresent ? (
                               <Check className="h-4 w-4 text-green-500" />
                             ) : (
@@ -195,26 +198,29 @@ const GradingTable = ({
                             }}
                             className={`${styles.button.ghost} 
                               ${isSkipped ? 'line-through text-gray-500' : 
-                                (!isPresent && attendance[student.id]) ? 'text-red-500 hover:text-red-300' : 
+                                (!isPresent && Object.keys(attendance).length > 0) ? 'text-red-500 hover:text-red-300' : 
                                 'text-gray-300 hover:text-gray-100'}`}
                           >
                             {student.name}
                           </button>
                           
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onToggleSkip?.(student.id);
-                            }}
-                            className={`p-1 rounded-md transition-colors ml-1 ${
-                              isSkipped ? 
-                              'bg-gray-700/50 text-gray-400 hover:bg-gray-700' : 
-                              'text-gray-500 hover:bg-gray-800 hover:text-red-400'
-                            }`}
-                            title={isSkipped ? "إلغاء التخطي" : "تخطي هذا الطالب"}
-                          >
-                            <UserX className="h-4 w-4" />
-                          </button>
+                          {/* Only show skip button if onToggleSkip is provided (exam mode) */}
+                          {onToggleSkip && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onToggleSkip(student.id);
+                              }}
+                              className={`p-1 rounded-md transition-colors ml-1 ${
+                                isSkipped ? 
+                                'bg-gray-700/50 text-gray-400 hover:bg-gray-700' : 
+                                'text-gray-500 hover:bg-gray-800 hover:text-red-400'
+                              }`}
+                              title={isSkipped ? "إلغاء التخطي" : "تخطي هذا الطالب"}
+                            >
+                              <UserX className="h-4 w-4" />
+                            </button>
+                          )}
                         </div>
                       </td>
                       
