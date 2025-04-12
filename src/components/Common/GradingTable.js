@@ -159,11 +159,6 @@ const GradingTable = ({
                     </div>
                   </th>
                 ))}
-                <th className="px-4 py-3 bg-gray-800/50 border-b border-gray-700 w-12">
-                  <div className="flex items-center justify-center">
-                    <span className="sr-only">إجراءات</span>
-                  </div>
-                </th>
               </tr>
             </thead>
             <tbody>
@@ -188,6 +183,7 @@ const GradingTable = ({
                               <X className="h-4 w-4 text-red-500" />
                             )
                           )}
+                          
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -204,6 +200,21 @@ const GradingTable = ({
                           >
                             {student.name}
                           </button>
+                          
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onToggleSkip?.(student.id);
+                            }}
+                            className={`p-1 rounded-md transition-colors ml-1 ${
+                              isSkipped ? 
+                              'bg-gray-700/50 text-gray-400 hover:bg-gray-700' : 
+                              'text-gray-500 hover:bg-gray-800 hover:text-red-400'
+                            }`}
+                            title={isSkipped ? "إلغاء التخطي" : "تخطي هذا الطالب"}
+                          >
+                            <UserX className="h-4 w-4" />
+                          </button>
                         </div>
                       </td>
                       
@@ -212,24 +223,10 @@ const GradingTable = ({
                           {renderGradeCell(student, typeId, grades[student.id]?.[typeId], type)}
                         </td>
                       ))}
-
-                      <td className="px-2 text-center">
-                        <button
-                          onClick={() => onToggleSkip?.(student.id)}
-                          className={`p-1.5 rounded-md transition-colors ${
-                            isSkipped ? 
-                            'bg-gray-700/50 text-gray-400 hover:bg-gray-700' : 
-                            'text-gray-500 hover:bg-gray-800 hover:text-red-400'
-                          }`}
-                          title={isSkipped ? "إلغاء التخطي" : "تخطي هذا الطالب"}
-                        >
-                          <UserX className="h-4 w-4" />
-                        </button>
-                      </td>
                     </tr>
                     {onCommentChange && isRowOpen && !isSkipped && (
                       <tr>
-                        <td colSpan={Object.keys(types).length + 2} className="p-0">
+                        <td colSpan={Object.keys(types).length + 1} className="p-0">
                           <CommentCell
                             studentId={student.id}
                             comment={comments[student.id] || ""}
