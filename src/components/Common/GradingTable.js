@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Check, X, Trash2, MessageCircle, PenLine } from 'lucide-react';
+import { Check, X, Trash2, MessageCircle, PenLine, UserX } from 'lucide-react';
 import useClickOutside from '@/hooks/useClickOutside';
 
 const styles = {
@@ -102,6 +102,8 @@ const GradingTable = ({
   grades = {},
   comments = {},
   attendance = {},
+  skippedStudents = {},
+  onToggleSkip,
   onCommentChange,
   renderGradeCell,
   className = "",
@@ -113,13 +115,18 @@ const GradingTable = ({
   // Sort students by attendance if provided
   const sortedStudents = React.useMemo(() => {
     return [...students].sort((a, b) => {
+      // First sort by skip status
+      if (skippedStudents[a.id] && !skippedStudents[b.id]) return 1;
+      if (!skippedStudents[a.id] && skippedStudents[b.id]) return -1;
+      
+      // Then sort by attendance
       if (!attendance[a.id] || !attendance[b.id]) return 0;
       const aPresent = attendance[a.id]?.present;
       const bPresent = attendance[b.id]?.present;
       if (aPresent === bPresent) return 0;
       return aPresent ? -1 : 1;
     });
-  }, [students, attendance]);
+  }, [students, attendance, skippedStudents]);
 
   const handleComment = (studentId, newComment) => {
     const trimmed = (newComment || "").trim();
@@ -152,6 +159,11 @@ const GradingTable = ({
                     </div>
                   </th>
                 ))}
+                <th className="px-4 py-3 bg-gray-800/50 border-b border-gray-700 w-12">
+                  <div className="flex items-center justify-center">
+                    <span className="sr-only">إجراءات</span>
+                  </div>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -159,10 +171,14 @@ const GradingTable = ({
                 const hasComment = Boolean(comments[student.id]);
                 const isRowOpen = hasComment || openCommentStudentId === student.id;
                 const isPresent = attendance[student.id]?.present;
+                const isSkipped = skippedStudents[student.id];
 
                 return (
                   <React.Fragment key={student.id}>
-                    <tr className="border-b border-gray-800 last:border-0 hover:bg-gray-800/30">
+                    <tr 
+                      className={`border-b border-gray-800 last:border-0 hover:bg-gray-800/30 
+                                ${isSkipped ? 'bg-gray-800/10 text-gray-500' : ''}`}
+                    >
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           {attendance[student.id] && (
@@ -181,7 +197,10 @@ const GradingTable = ({
                                 setOpenCommentStudentId(student.id);
                               }
                             }}
-                            className={`${styles.button.ghost} ${(!isPresent && attendance[student.id]) ? 'text-red-500 hover:text-red-300' : 'text-gray-300 hover:text-gray-100'}`}
+                            className={`${styles.button.ghost} 
+                              ${isSkipped ? 'line-through text-gray-500' : 
+                                (!isPresent && attendance[student.id]) ? 'text-red-500 hover:text-red-300' : 
+                                'text-gray-300 hover:text-gray-100'}`}
                           >
                             {student.name}
                           </button>
@@ -189,12 +208,26 @@ const GradingTable = ({
                       </td>
                       
                       {Object.entries(types).map(([typeId, type]) => (
-                        <td key={typeId} className="px-4 py-3 text-center">
+                        <td key={typeId} className={`px-4 py-3 text-center ${isSkipped ? 'line-through' : ''}`}>
                           {renderGradeCell(student, typeId, grades[student.id]?.[typeId], type)}
                         </td>
                       ))}
+
+                      <td className="px-2 text-center">
+                        <button
+                          onClick={() => onToggleSkip?.(student.id)}
+                          className={`p-1.5 rounded-md transition-colors ${
+                            isSkipped ? 
+                            'bg-gray-700/50 text-gray-400 hover:bg-gray-700' : 
+                            'text-gray-500 hover:bg-gray-800 hover:text-red-400'
+                          }`}
+                          title={isSkipped ? "إلغاء التخطي" : "تخطي هذا الطالب"}
+                        >
+                          <UserX className="h-4 w-4" />
+                        </button>
+                      </td>
                     </tr>
-                    {onCommentChange && isRowOpen && (
+                    {onCommentChange && isRowOpen && !isSkipped && (
                       <tr>
                         <td colSpan={Object.keys(types).length + 2} className="p-0">
                           <CommentCell
