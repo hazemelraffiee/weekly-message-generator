@@ -42,6 +42,15 @@ export const examConfigs = {
     ]
   },
 
+"الفوج الثالث": {
+    examName: "اختبار الفصل الدراسي الثاني",
+    sections: [
+      { id: "memorization", name: "حفظ", weight: 3 },
+      { id: "religion", name: "تربية إسلامية", weight: 1 },
+      { id: "tajweed", name: "تجويد", weight: 1 }
+    ]
+  },
+
   "الفوج الرابع": {
     examName: "اختبار الفصل الدراسي الثاني",
     sections: [
