@@ -87,7 +87,7 @@ def extract_exam_scores(file_path):
                 attended, total = extract_attendance(df, sheet)
                 
                 # Rest of the exam processing code
-                exam_row_index = df[df.apply(lambda row: row.astype(str).str.contains("امتحان الفصل الدراسى الأول", na=False).any(), axis=1)].index
+                exam_row_index = df[df.apply(lambda row: row.astype(str).str.contains("امتحان الفصل الدراسى الثانى", na=False).any(), axis=1)].index
                 
                 if not exam_row_index.empty:
                     row_idx = exam_row_index[0]

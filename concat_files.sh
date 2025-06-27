@@ -246,10 +246,6 @@ cat > "$HTML_FILE" << 'HTML_EOF'
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 </head>
 <body>
-    <div class="header">
-        <h1>File Selector</h1>
-    </div>
-    
     <div class="search-bar">
         <input type="text" id="search" class="search" placeholder="Search files...">
         <button class="btn" id="selectAll">Select All Files</button>
