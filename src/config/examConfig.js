@@ -10,15 +10,14 @@ export const examConfigs = {
       {
         name: "الحزب ال 60",
         sections: [
-          { id: "memorization", name: "حفظ", weight: 4 },
-          { id: "religion", name: "تربية إسلامية", weight: 1 }
+          { id: "memorization", name: "حفظ", weight: 3 },
+          { id: "tajweed", name: "تجويد", weight: 1 }
         ]
       },
       {
         name: "القاعدة النورانية",
         sections: [
           { id: "memorization", name: "حفظ", weight: 2 },
-          { id: "religion", name: "تربية إسلامية", weight: 1 },
           { id: "nouraneya", name: "القاعدة النورانية", weight: 2 }
         ]
       }
@@ -46,7 +45,6 @@ export const examConfigs = {
     examName: "اختبار الفصل الدراسي الثالث",
     sections: [
       { id: "memorization", name: "حفظ", weight: 3 },
-      { id: "religion", name: "تربية إسلامية", weight: 1 },
       { id: "tajweed", name: "تجويد", weight: 1 }
     ]
   },
@@ -55,8 +53,7 @@ export const examConfigs = {
     examName: "اختبار الفصل الدراسي الثالث",
     sections: [
       { id: "memorization", name: "حفظ", weight: 4 },
-      { id: "revision", name: "مراجعة", weight: 3 },
-      { id: "tajweed", name: "تجويد", weight: 2 },
+      { id: "revision", name: "مراجعة", weight: 3 }
     ]
   },
 
@@ -64,7 +61,7 @@ export const examConfigs = {
     examName: "اختبار الفصل الدراسي الثالث",
     sections: [
       { id: "memorization", name: "حفظ", weight: 3 },
-      { id: "revision", name: "مراجعة", weight: 2 }
+      { id: "tajweed", name: "تجويد", weight: 2 }
     ]
   },
 
