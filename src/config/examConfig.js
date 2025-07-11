@@ -5,7 +5,7 @@
  */
 export const examConfigs = {
   "الفوج التمهيدي - القاعدة النورانية": {
-    examName: "اختبار الفصل الدراسي الثاني",
+    examName: "اختبار الفصل الدراسي الثالث",
     configs: [
       {
         name: "الحزب ال 60",
@@ -26,7 +26,7 @@ export const examConfigs = {
   },
 
   "الفوج الأول": {
-    examName: "اختبار الفصل الدراسي الثاني",
+    examName: "اختبار الفصل الدراسي الثالث",
     sections: [
       { id: "memorization", name: "حفظ", weight: 3 },
       { id: "tajweed", name: "تجويد", weight: 1 }
@@ -34,7 +34,7 @@ export const examConfigs = {
   },
 
   "الفوج الثاني": {
-    examName: "اختبار الفصل الدراسي الثاني",
+    examName: "اختبار الفصل الدراسي الثالث",
     sections: [
       { id: "memorization", name: "حفظ", weight: 5 },
       { id: "revision", name: "مراجعة", weight: 3.5 },
@@ -43,7 +43,7 @@ export const examConfigs = {
   },
 
 "الفوج الثالث": {
-    examName: "اختبار الفصل الدراسي الثاني",
+    examName: "اختبار الفصل الدراسي الثالث",
     sections: [
       { id: "memorization", name: "حفظ", weight: 3 },
       { id: "religion", name: "تربية إسلامية", weight: 1 },
@@ -52,7 +52,7 @@ export const examConfigs = {
   },
 
   "الفوج الرابع": {
-    examName: "اختبار الفصل الدراسي الثاني",
+    examName: "اختبار الفصل الدراسي الثالث",
     sections: [
       { id: "memorization", name: "حفظ", weight: 4 },
       { id: "revision", name: "مراجعة", weight: 3 },
@@ -61,7 +61,7 @@ export const examConfigs = {
   },
 
   "الفوج الخامس": {
-    examName: "اختبار الفصل الدراسي الثاني",
+    examName: "اختبار الفصل الدراسي الثالث",
     sections: [
       { id: "memorization", name: "حفظ", weight: 3 },
       { id: "revision", name: "مراجعة", weight: 2 }
@@ -70,7 +70,7 @@ export const examConfigs = {
 
   // Default configuration used when class name is not found
   "default": {
-    examName: "اختبار الفصل الدراسي الثاني",
+    examName: "اختبار الفصل الدراسي الثالث",
     sections: [
       { id: "memorization", name: "حفظ", weight: 3 },
       { id: "revision", name: "مراجعة", weight: 2 },

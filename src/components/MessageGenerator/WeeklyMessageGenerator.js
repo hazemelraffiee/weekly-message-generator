@@ -869,7 +869,7 @@ const WeeklyMessageGenerator = () => {
                           <span className="absolute -top-1 -right-1 h-3 w-3 bg-yellow-400 rounded-full animate-blink-fast"></span>
                         </div>
                         <span className="font-bold text-base relative">
-                          اختبار الفصل الدراسي الثاني
+                          اختبار الفصل الدراسي الثالث
                           <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-white animate-grow-line"></span>
                         </span>
                       </div>
