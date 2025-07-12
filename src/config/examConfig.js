@@ -53,7 +53,8 @@ export const examConfigs = {
     examName: "اختبار الفصل الدراسي الثالث",
     sections: [
       { id: "memorization", name: "حفظ", weight: 4 },
-      { id: "revision", name: "مراجعة", weight: 3 }
+      { id: "revision", name: "مراجعة", weight: 3 },
+      { id: "tajweed", name: "تجويد", weight: 1 }
     ]
   },
 
